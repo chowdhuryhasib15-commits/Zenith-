@@ -20,9 +20,9 @@ interface PomodoroPageProps {
 }
 
 const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs, fullState, onRestore }) => {
-  const [focusDuration, setFocusDuration] = useState(25);
-  const [breakDuration, setBreakDuration] = useState(5);
-  const [minutes, setMinutes] = useState(25);
+  const [focusDuration, setFocusDuration] = useState(52);
+  const [breakDuration, setBreakDuration] = useState(17);
+  const [minutes, setMinutes] = useState(52);
   const [seconds, setSeconds] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [selectedSub, setSelectedSub] = useState<string>('');
