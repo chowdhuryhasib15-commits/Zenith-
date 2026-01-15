@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { AppState, Subject, Chapter } from '../types';
 import { ICONS } from '../constants';
 import { getStudyInsights } from '../services/geminiService';
-import { Timer, Edit2, X, AlertCircle, Zap, Brain, ChevronRight, Sparkles, GraduationCap, UserCircle, Cloud, ShieldCheck } from 'lucide-react';
+import { Timer, Edit2, X, AlertCircle, Zap, Brain, ChevronRight, Sparkles, GraduationCap, UserCircle, Download, ShieldCheck, Target } from 'lucide-react';
 
 interface DashboardProps {
   state: AppState;
@@ -98,21 +98,27 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
   return (
     <div className="space-y-6 stagger-fade-in max-w-7xl mx-auto pb-12">
       
-      {/* Sync Status Header Bar */}
-      <div className="flex items-center justify-between px-6 py-2 bg-white/40 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm mb-4">
-         <div className="flex items-center gap-2">
-            <div className={`w-1.5 h-1.5 rounded-full ${state.syncStatus === 'synced' ? 'bg-emerald-500 animate-pulse' : state.syncStatus === 'syncing' ? 'bg-indigo-500 animate-bounce' : 'bg-amber-500'}`} />
-            <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">
-               Zenith {state.syncStatus === 'synced' ? 'Cloud Link: Established' : state.syncStatus === 'syncing' ? 'Neural Uplink active...' : 'Local Cache Only'}
-            </span>
-         </div>
+      {/* Detail Achievement Header */}
+      <div className="flex items-center justify-between px-6 py-4 bg-white/40 backdrop-blur-md rounded-[32px] border border-slate-100 shadow-sm mb-4">
          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-               <ShieldCheck size={12} className="text-emerald-500" />
-               <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">End-to-End Encrypted</span>
+            <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg">
+               <Target size={20} />
+            </div>
+            <div>
+               <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest">Global Progress</h2>
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Academic Trajectory Analysis</p>
+            </div>
+         </div>
+         <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+               <ShieldCheck size={14} className="text-emerald-500" />
+               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Local Data Vault Secure</span>
             </div>
             {state.lastSyncedAt && (
-               <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Last Sync: {new Date(state.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+               <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full border border-slate-100">
+                  <Download size={12} className="text-indigo-400" />
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Last Export: {new Date(state.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+               </div>
             )}
          </div>
       </div>

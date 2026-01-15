@@ -2,8 +2,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppState, ExamResult, Subject } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 const cleanJson = (text: string) => {
   return text.replace(/```json/g, '').replace(/```/g, '').trim();
 };
@@ -20,6 +18,8 @@ export const getStudyInsights = async (state: AppState): Promise<string[]> => {
   }
 
   try {
+    // Instantiate inside the function to ensure the current API key is used
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const prompt = `
       Analyze this student's data and provide brief, actionable study insights. 
       Data: 
@@ -65,6 +65,8 @@ export const getSyncReport = async (state: AppState): Promise<string> => {
   }
 
   try {
+    // Instantiate inside the function to ensure the current API key is used
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const prompt = `
       Create a very short (15 words max), encouraging, high-end "Cloud Sync" confirmation message for a study app.
       Context: The user just backed up ${state.subjects.length} subjects and ${state.goals.length} goals.
@@ -92,6 +94,8 @@ export const getResultPerformanceAnalysis = async (results: ExamResult[], subjec
   if (!process.env.API_KEY || process.env.API_KEY === "undefined") return fallbacks;
 
   try {
+    // Instantiate inside the function to ensure the current API key is used
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const resultsSummary = results.map(r => ({
       subject: subjects.find(s => s.id === r.subjectId)?.name || 'Unknown',
       type: r.type,
@@ -125,6 +129,7 @@ export const getResultPerformanceAnalysis = async (results: ExamResult[], subjec
     });
 
     const text = response.text;
+    if (!text) throw new Error("Empty response");
     const json = JSON.parse(cleanJson(text)) as { analysis: string[] };
     return json.analysis?.length ? json.analysis : fallbacks;
   } catch (error) {
@@ -139,6 +144,8 @@ export const generateSubjectChapters = async (subjectName: string): Promise<stri
   if (!process.env.API_KEY || process.env.API_KEY === "undefined") return fallbacks;
 
   try {
+    // Instantiate inside the function to ensure the current API key is used
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const prompt = `Provide a list of 5-8 common core chapters/topics for the subject: ${subjectName}. Keep it brief.`;
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -158,6 +165,7 @@ export const generateSubjectChapters = async (subjectName: string): Promise<stri
       }
     });
     const text = response.text;
+    if (!text) throw new Error("Empty response");
     const json = JSON.parse(cleanJson(text)) as { chapters: string[] };
     return json.chapters?.length ? json.chapters : fallbacks;
   } catch (error) {

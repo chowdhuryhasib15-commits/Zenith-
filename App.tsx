@@ -108,7 +108,7 @@ const App: React.FC = () => {
       case 'subjects': return <SubjectsPage subjects={state.subjects} setSubjects={updateSubjects} />;
       case 'revision': return <RevisionPage subjects={state.subjects} setSubjects={updateSubjects} />;
       case 'courses': return <CoursesPage courses={state.courses} subjects={state.subjects} onAdd={addCourse} onDelete={deleteCourse} />;
-      case 'pomodoro': return <PomodoroPage subjects={state.subjects} onComplete={logPomodoro} logs={state.pomodoroLogs} />;
+      case 'pomodoro': return <PomodoroPage subjects={state.subjects} onComplete={logPomodoro} logs={state.pomodoroLogs} fullState={state} onRestore={onRestore} />;
       case 'goals': return <GoalsPage goals={state.goals} onAdd={addGoal} onToggle={toggleGoal} onDelete={deleteGoal} />;
       case 'results': return <ResultsPage results={state.results} subjects={state.subjects} onAdd={addResult} onDelete={deleteResult} />;
       default: return <Dashboard state={state} onNavigate={setActiveTab} onUpdateDeadline={setSyllabusDeadline} />;
