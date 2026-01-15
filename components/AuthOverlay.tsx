@@ -1,11 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User } from '../types';
 import { 
   Sparkles, ShieldCheck, Globe, 
   UserCircle, GraduationCap, Calendar, 
   Mail, ArrowRight, UserPlus, LogIn,
-  Fingerprint
+  Fingerprint, Loader2, Settings, X, AlertTriangle, Key, ExternalLink
 } from 'lucide-react';
 
 interface AuthOverlayProps {
@@ -13,16 +13,116 @@ interface AuthOverlayProps {
 }
 
 const REGISTERED_USERS_KEY = 'zenith_registered_users';
+const SAVED_CLIENT_ID_KEY = 'zenith_google_client_id';
+
+// Default Client ID from your screenshot
+const DEFAULT_CLIENT_ID = "293292575999-tt5cvcavbf1cs2ehe0r7n4o2bkg6rp5p.apps.googleusercontent.com";
 
 const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin }) => {
   const [mode, setMode] = useState<'signin' | 'signup'>('signup');
   const [isAuthenticating, setIsAuthenticating] = useState<'email' | 'google' | null>(null);
+  const [showConfig, setShowConfig] = useState(false);
+  const [clientId, setClientId] = useState(() => localStorage.getItem(SAVED_CLIENT_ID_KEY) || DEFAULT_CLIENT_ID);
+  
   const [formData, setFormData] = useState({
     name: '',
     age: '',
     education: '',
     email: ''
   });
+
+  const googleButtonRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const initializeGoogle = () => {
+      const g = (window as any).google;
+      if (typeof g !== 'undefined' && g.accounts && googleButtonRef.current && clientId) {
+        try {
+          // Clear previous button content if re-initializing
+          if (googleButtonRef.current) googleButtonRef.current.innerHTML = '';
+          
+          g.accounts.id.initialize({
+            client_id: clientId,
+            callback: handleGoogleCredentialResponse,
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+
+          g.accounts.id.renderButton(googleButtonRef.current, {
+            type: 'standard',
+            shape: 'pill',
+            theme: 'outline',
+            size: 'large',
+            text: 'continue_with',
+            width: 320,
+          });
+        } catch (err) {
+          console.error("Google GSI Init Error:", err);
+        }
+      } else if (!clientId) {
+        console.warn("No Google Client ID configured.");
+      } else {
+        setTimeout(initializeGoogle, 100);
+      }
+    };
+
+    initializeGoogle();
+  }, [mode, clientId]);
+
+  const saveClientId = (id: string) => {
+    const cleanId = id.trim();
+    setClientId(cleanId);
+    localStorage.setItem(SAVED_CLIENT_ID_KEY, cleanId);
+    setShowConfig(false);
+    // Give local storage a moment to settle, then reload
+    setTimeout(() => window.location.reload(), 100);
+  };
+
+  const decodeJwt = (token: string) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      console.error("JWT Decode Error", e);
+      return null;
+    }
+  };
+
+  const handleGoogleCredentialResponse = (response: any) => {
+    setIsAuthenticating('google');
+    const payload = decodeJwt(response.credential);
+    
+    if (payload) {
+      setTimeout(() => {
+        const users = getRegisteredUsers();
+        const existingUser = users.find(u => u.email.toLowerCase() === payload.email.toLowerCase());
+
+        if (existingUser) {
+          onLogin(existingUser);
+        } else {
+          const newUser: User = {
+            id: 'google-' + payload.sub,
+            name: payload.name,
+            email: payload.email,
+            age: parseInt(formData.age) || 20,
+            education: formData.education || 'University Student',
+            photoURL: payload.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${payload.name}`,
+            joinedAt: new Date().toISOString()
+          };
+          saveUser(newUser);
+          onLogin(newUser);
+        }
+        setIsAuthenticating(null);
+      }, 1000);
+    } else {
+      setIsAuthenticating(null);
+      alert("Google Authentication failed. Please verify that your email is added as a 'Test User' in the Google Cloud Console.");
+    }
+  };
 
   const getRegisteredUsers = (): User[] => {
     const saved = localStorage.getItem(REGISTERED_USERS_KEY);
@@ -36,7 +136,6 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin }) => {
 
   const handleEmailAuth = () => {
     if (!formData.email.trim()) return;
-
     setIsAuthenticating('email');
     
     setTimeout(() => {
@@ -49,14 +148,12 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin }) => {
           setIsAuthenticating(null);
           return;
         }
-
         if (existingUser) {
           alert("Account already exists. Try signing in.");
           setMode('signin');
           setIsAuthenticating(null);
           return;
         }
-
         const newUser: User = {
           id: 'user-' + Math.random().toString(36).substr(2, 9),
           name: formData.name,
@@ -66,7 +163,6 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin }) => {
           photoURL: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.name}`,
           joinedAt: new Date().toISOString()
         };
-
         saveUser(newUser);
         onLogin(newUser);
       } else {
@@ -81,41 +177,13 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin }) => {
     }, 1200);
   };
 
-  const handleGoogleAuth = () => {
-    setIsAuthenticating('google');
-    setTimeout(() => {
-      const users = getRegisteredUsers();
-      const googleEmail = formData.email || "google.pioneer@gmail.com";
-      const existingUser = users.find(u => u.email.toLowerCase() === googleEmail.toLowerCase());
-
-      if (existingUser) {
-        onLogin(existingUser);
-      } else {
-        const googleUser: User = {
-          id: 'google-' + Math.random().toString(36).substr(2, 9),
-          name: "Zenith Voyager",
-          email: googleEmail,
-          age: 20,
-          education: 'University',
-          photoURL: `https://api.dicebear.com/7.x/avataaars/svg?seed=GoogleAuth${Math.random()}`,
-          joinedAt: new Date().toISOString()
-        };
-        saveUser(googleUser);
-        onLogin(googleUser);
-      }
-      setIsAuthenticating(null);
-    }, 1500);
-  };
-
   return (
     <div className="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-4 overflow-hidden">
-      {/* Mesh Gradient Background */}
       <div className="absolute top-[-20%] left-[-10%] w-[80%] h-[80%] bg-indigo-600/20 blur-[120px] rounded-full animate-pulse opacity-50" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[80%] h-[80%] bg-violet-600/20 blur-[120px] rounded-full animate-pulse opacity-50" style={{ animationDelay: '2s' }} />
       
       <div className="relative z-10 w-full max-w-5xl flex flex-col lg:flex-row items-center gap-12 lg:gap-24 animate-in fade-in zoom-in-95 duration-1000">
         
-        {/* Brand/Marketing Side */}
         <div className="hidden lg:flex flex-col flex-1 text-left space-y-8 max-w-lg">
           <div className="w-16 h-16 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl flex items-center justify-center shadow-2xl">
             <Sparkles className="text-indigo-400" size={32} />
@@ -148,11 +216,17 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin }) => {
           </div>
         </div>
 
-        {/* Form Side */}
         <div className="w-full max-w-md bg-white p-8 lg:p-12 rounded-[56px] shadow-2xl border border-slate-100 relative overflow-hidden">
-          {/* Subtle Accent */}
           <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-indigo-500 to-violet-500" />
           
+          <button 
+            onClick={() => setShowConfig(true)}
+            className="absolute top-8 right-8 p-2 text-slate-300 hover:text-indigo-600 transition-colors"
+            title="Configure Google Auth"
+          >
+            <Settings size={20} />
+          </button>
+
           <div className="text-center mb-10">
             <h2 className="text-4xl font-black text-slate-900 tracking-tight">
               {mode === 'signup' ? 'Get Started' : 'Welcome Back'}
@@ -163,35 +237,36 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin }) => {
           </div>
 
           <div className="space-y-6">
-            {/* Primary Social Auth - Top of Hierarchy */}
-            <button 
-              onClick={handleGoogleAuth}
-              disabled={!!isAuthenticating}
-              className="w-full bg-slate-900 text-white py-6 px-8 rounded-[32px] font-black flex items-center justify-center gap-4 hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 shadow-xl shadow-slate-200 group"
-            >
-              {isAuthenticating === 'google' ? (
-                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  <svg className="w-6 h-6 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                  </svg>
-                  <span className="tracking-tight text-lg">Continue with Google</span>
-                </>
+            <div className="relative group w-full flex flex-col items-center min-h-[50px] justify-center">
+              {isAuthenticating === 'google' && (
+                <div className="absolute inset-0 bg-white/80 z-20 flex items-center justify-center rounded-[32px] backdrop-blur-sm">
+                   <Loader2 className="animate-spin text-indigo-600" size={24} />
+                </div>
               )}
-            </button>
+              
+              {clientId ? (
+                <div ref={googleButtonRef} className="w-full flex justify-center" />
+              ) : (
+                <button 
+                  onClick={() => setShowConfig(true)}
+                  className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl text-slate-400 hover:border-indigo-400 hover:text-indigo-600 transition-all group"
+                >
+                  <Key size={18} className="group-hover:rotate-12 transition-transform" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Setup Google Client ID</span>
+                </button>
+              )}
+              
+              <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-4">
+                Secure Cloud Authentication
+              </p>
+            </div>
 
-            {/* Visual Divider */}
             <div className="flex items-center gap-4 py-2">
               <div className="h-px flex-1 bg-slate-100" />
-              <span className="text-[12px] font-black text-slate-300 uppercase tracking-widest">or email</span>
+              <span className="text-[12px] font-black text-slate-300 uppercase tracking-widest">or email login</span>
               <div className="h-px flex-1 bg-slate-100" />
             </div>
 
-            {/* Secondary Email Auth Flow */}
             <div className="space-y-5">
               <div className="relative group">
                 <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={20} />
@@ -204,7 +279,6 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin }) => {
                 />
               </div>
 
-              {/* Only show extra info for Sign Up */}
               <div className={`space-y-5 transition-all duration-500 overflow-hidden ${mode === 'signup' ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
                 <div className="relative group">
                   <UserCircle className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={20} />
@@ -267,17 +341,79 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin }) => {
             </button>
           </div>
         </div>
-
-        {/* Mobile-only Branding Footer */}
-        <div className="lg:hidden text-center space-y-4 pb-8">
-            <h1 className="text-5xl font-black text-white tracking-tighter uppercase">ZENITH.</h1>
-            <div className="flex justify-center gap-6">
-               <ShieldCheck className="text-slate-500" size={24} />
-               <Globe className="text-slate-500" size={24} />
-               <Fingerprint className="text-slate-500" size={24} />
-            </div>
-        </div>
       </div>
+
+      {/* Configuration Portal Overlay */}
+      {showConfig && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300">
+           <div className="bg-white rounded-[48px] w-full max-w-2xl p-12 shadow-2xl relative animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh]">
+              <button onClick={() => setShowConfig(false)} className="absolute top-10 right-10 p-3 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-2xl transition-all">
+                <X size={24} />
+              </button>
+              
+              <div className="flex items-center gap-5 mb-10 shrink-0">
+                <div className="p-4 bg-indigo-100 text-indigo-600 rounded-3xl">
+                  <Key size={32} />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-black tracking-tight text-slate-900">Auth Portal</h2>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Google Console Integration</p>
+                </div>
+              </div>
+
+              <div className="space-y-6 overflow-y-auto custom-scrollbar pr-4 pb-4">
+                <div className="p-6 bg-blue-50 border border-blue-100 rounded-3xl flex flex-col gap-4">
+                   <div className="flex items-start gap-3">
+                     <AlertTriangle className="text-blue-500 shrink-0 mt-1" size={20} />
+                     <div className="space-y-2">
+                       <p className="text-sm font-black text-blue-900 uppercase tracking-wide">OAuth Troubleshooting Checklist</p>
+                       <ul className="text-xs font-medium text-blue-700 space-y-2 list-disc ml-4">
+                         <li>Verify <b>Authorized JavaScript Origins</b> includes this current URL.</li>
+                         <li>Add your Gmail address to <b>Test Users</b> in the "OAuth consent screen" tab.</li>
+                         <li>Ensure you are using the correct <b>Client ID</b> (Ends in <code>.apps.googleusercontent.com</code>).</li>
+                       </ul>
+                     </div>
+                   </div>
+                   <a 
+                    href="https://console.cloud.google.com/apis/credentials" 
+                    target="_blank" 
+                    className="flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all"
+                   >
+                     Open Google Console <ExternalLink size={12} />
+                   </a>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Current OAuth Client ID</label>
+                  <textarea 
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-8 py-5 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-mono text-[10px] text-slate-700 shadow-inner h-24 resize-none"
+                    placeholder="Enter Client ID (Ends in .apps.googleusercontent.com)"
+                    defaultValue={clientId}
+                    id="client-id-input"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 pt-4">
+                   <button 
+                    onClick={() => saveClientId((document.getElementById('client-id-input') as HTMLTextAreaElement).value)}
+                    className="bg-indigo-600 text-white py-6 rounded-[32px] font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all"
+                   >
+                     Update Identity
+                   </button>
+                   <button 
+                    onClick={() => {
+                      localStorage.removeItem(SAVED_CLIENT_ID_KEY);
+                      window.location.reload();
+                    }}
+                    className="bg-slate-100 text-slate-400 py-6 rounded-[32px] font-black text-xs uppercase tracking-widest hover:bg-rose-50 hover:text-rose-500 transition-all"
+                   >
+                     Reset to Default
+                   </button>
+                </div>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };

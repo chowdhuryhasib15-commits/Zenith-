@@ -37,6 +37,7 @@ export interface Course {
 export type GoalCategory = 'Study' | 'Personal' | 'Project' | 'Health';
 export type RecurrenceType = 'none' | 'daily' | 'weekly' | 'monthly';
 export type AppTheme = 'light' | 'dark' | 'obsidian' | 'rose' | 'ocean';
+export type SyncStatus = 'synced' | 'local-only' | 'syncing' | 'error';
 
 export interface Goal {
   id: string;
@@ -73,4 +74,6 @@ export interface AppState {
   courses: Course[];
   theme: AppTheme;
   syllabusDeadline?: string;
+  syncStatus: SyncStatus;
+  lastSyncedAt?: string;
 }

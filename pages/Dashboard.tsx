@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { AppState, Subject, Chapter } from '../types';
 import { ICONS } from '../constants';
 import { getStudyInsights } from '../services/geminiService';
-import { Timer, Edit2, X, AlertCircle, Zap, Brain, ChevronRight, Sparkles, GraduationCap, UserCircle } from 'lucide-react';
+import { Timer, Edit2, X, AlertCircle, Zap, Brain, ChevronRight, Sparkles, GraduationCap, UserCircle, Cloud, ShieldCheck } from 'lucide-react';
 
 interface DashboardProps {
   state: AppState;
@@ -90,7 +90,6 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
   const totalFocusMinutes = state.pomodoroLogs.reduce((acc, l) => acc + l.duration, 0);
   const averageResult = state.results.length === 0 ? 0 : Math.round((state.results.reduce((acc, r) => acc + (r.obtainedMarks / r.totalMarks), 0) / state.results.length) * 100);
 
-  // High-Precision SVG Constants
   const radius = 72;
   const strokeWidth = 14;
   const circumference = 2 * Math.PI * radius;
@@ -99,6 +98,25 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
   return (
     <div className="space-y-6 stagger-fade-in max-w-7xl mx-auto pb-12">
       
+      {/* Sync Status Header Bar */}
+      <div className="flex items-center justify-between px-6 py-2 bg-white/40 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm mb-4">
+         <div className="flex items-center gap-2">
+            <div className={`w-1.5 h-1.5 rounded-full ${state.syncStatus === 'synced' ? 'bg-emerald-500 animate-pulse' : state.syncStatus === 'syncing' ? 'bg-indigo-500 animate-bounce' : 'bg-amber-500'}`} />
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">
+               Zenith {state.syncStatus === 'synced' ? 'Cloud Link: Established' : state.syncStatus === 'syncing' ? 'Neural Uplink active...' : 'Local Cache Only'}
+            </span>
+         </div>
+         <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+               <ShieldCheck size={12} className="text-emerald-500" />
+               <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">End-to-End Encrypted</span>
+            </div>
+            {state.lastSyncedAt && (
+               <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Last Sync: {new Date(state.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            )}
+         </div>
+      </div>
+
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm relative overflow-hidden group flex flex-col justify-between min-h-[360px]">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />
@@ -108,9 +126,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
               <p className="text-[11px] font-medium text-slate-400 italic leading-relaxed">
                 "Success is not final, failure is not fatal: it is the courage to continue that counts."
               </p>
-              <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mt-2 opacity-60">
-                — Winston Churchill
-              </p>
+              <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mt-2 opacity-60">— Winston Churchill</p>
             </div>
 
             <div className="flex items-center gap-6 mb-2">
@@ -122,12 +138,10 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
                  <h1 className="text-3xl font-black text-slate-900 tracking-tighter leading-none mb-2">Welcome, {state.user?.name.split(' ')[0]}</h1>
                  <div className="flex flex-wrap gap-2">
                     <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 rounded-full text-[10px] font-black text-indigo-600 uppercase tracking-wider">
-                       <GraduationCap size={12} />
-                       {state.user?.education || 'Student'}
+                       <GraduationCap size={12} /> {state.user?.education || 'Student'}
                     </div>
                     <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                       <UserCircle size={12} />
-                       {state.user?.age || '--'} Years
+                       <UserCircle size={12} /> {state.user?.age || '--'} Years
                     </div>
                  </div>
                  <p className="text-sm text-slate-500 font-medium mt-3">
@@ -140,9 +154,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
             <div className="bg-slate-900 text-white rounded-[32px] p-6 flex items-center justify-between shadow-2xl">
                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center text-indigo-300 backdrop-blur-md">
-                    <Timer size={20} />
-                  </div>
+                  <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center text-indigo-300 backdrop-blur-md"><Timer size={20} /></div>
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Target Date</p>
                     <button onClick={() => setIsEditingDeadline(true)} className="text-sm font-black text-white hover:text-indigo-400 transition-colors flex items-center gap-2 mt-1">
@@ -166,9 +178,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
               className={`rounded-[32px] p-6 flex items-center justify-between transition-all hover:scale-[1.02] active:scale-95 ${revisionQueue.length > 0 ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'bg-slate-50 border border-slate-100 text-slate-400'}`}
             >
                <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${revisionQueue.length > 0 ? 'bg-white/20 shadow-inner' : 'bg-slate-200'}`}>
-                    <Zap size={20} />
-                  </div>
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${revisionQueue.length > 0 ? 'bg-white/20 shadow-inner' : 'bg-slate-200'}`}><Zap size={20} /></div>
                   <div className="text-left">
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">Spaced Repetition</p>
                     <p className="text-sm font-black mt-1">{revisionQueue.length > 0 ? `${revisionQueue.length} Due for Sync` : 'Optimal Retention'}</p>
@@ -190,10 +200,6 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
                   <stop offset="0%" stopColor="#6366f1" />
                   <stop offset="100%" stopColor="#8b5cf6" />
                 </linearGradient>
-                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
               </defs>
               <circle cx="80" cy="80" r={radius} stroke="#f8fafc" strokeWidth={strokeWidth} fill="none" />
               <circle 
@@ -204,7 +210,6 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
                 strokeDasharray={circumference} 
                 strokeDashoffset={dashOffset} 
                 strokeLinecap="round" 
-                filter={progressPercent > 0 ? "url(#glow)" : ""}
                 className="transition-all duration-[1.5s] ease-[cubic-bezier(0.34,1.56,0.64,1)]" 
               />
             </svg>
@@ -231,9 +236,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
         <div className="lg:col-span-7 bg-white p-10 rounded-[48px] border border-slate-100 shadow-sm">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-violet-100 text-violet-600 rounded-2xl shadow-sm">
-                <Brain size={24} />
-              </div>
+              <div className="p-3 bg-violet-100 text-violet-600 rounded-2xl shadow-sm"><Brain size={24} /></div>
               <div>
                 <h3 className="text-xl font-black text-slate-900 tracking-tight">Revision Queue</h3>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Spaced Repetition Schedule</p>
@@ -267,14 +270,10 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
 
         <div className="lg:col-span-5 space-y-8">
           <div className="bg-slate-900 text-white p-9 rounded-[48px] shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-[2s]">
-              <Sparkles size={80} />
-            </div>
+            <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-[2s]"><Sparkles size={80} /></div>
             <div className="relative z-10">
               <div className="flex items-center gap-3 mb-8">
-                <div className="p-2.5 bg-white/10 rounded-xl text-indigo-300 shadow-inner">
-                  {ICONS.AI}
-                </div>
+                <div className="p-2.5 bg-white/10 rounded-xl text-indigo-300 shadow-inner">{ICONS.AI}</div>
                 <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-300">Zenith AI Insights</h3>
               </div>
               {loadingInsights ? (
@@ -322,20 +321,10 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
       {isEditingDeadline && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[70] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-white rounded-[48px] w-full max-md p-12 shadow-2xl relative animate-in zoom-in-95 duration-500">
-            <button onClick={() => setIsEditingDeadline(false)} className="absolute top-10 right-10 p-3 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-2xl transition-all">
-              <X size={24} />
-            </button>
-            <div className="flex items-center gap-5 mb-10">
-              <div className="p-4 bg-indigo-100 text-indigo-600 rounded-3xl">
-                <AlertCircle size={32} />
-              </div>
-              <h2 className="text-3xl font-black tracking-tight text-slate-900">Final Target</h2>
-            </div>
+            <button onClick={() => setIsEditingDeadline(false)} className="absolute top-10 right-10 p-3 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-2xl transition-all"><X size={24} /></button>
+            <div className="flex items-center gap-5 mb-10"><div className="p-4 bg-indigo-100 text-indigo-600 rounded-3xl"><AlertCircle size={32} /></div><h2 className="text-3xl font-black tracking-tight text-slate-900">Final Target</h2></div>
             <form onSubmit={(e) => { e.preventDefault(); onUpdateDeadline(tempDeadline); setIsEditingDeadline(false); }} className="space-y-8">
-              <div>
-                <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4 ml-1">Syllabus Completion Date</label>
-                <input type="date" required className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-8 py-5 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-black text-slate-700 shadow-inner" value={tempDeadline} onChange={e => setTempDeadline(e.target.value)} />
-              </div>
+              <div><label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4 ml-1">Syllabus Completion Date</label><input type="date" required className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-8 py-5 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-black text-slate-700 shadow-inner" value={tempDeadline} onChange={e => setTempDeadline(e.target.value)} /></div>
               <button className="w-full bg-indigo-600 text-white py-6 rounded-[32px] font-black text-xl shadow-2xl shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all">Lock Milestone</button>
             </form>
           </div>

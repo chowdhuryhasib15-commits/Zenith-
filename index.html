@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ZENITH - Reach Your Peak</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -60,7 +61,7 @@
             cursor: none; 
             background-color: var(--bg-primary); 
             color: var(--text-primary);
-            transition: background-color 0.3s ease, color 0.3s ease;
+            transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s ease;
         }
         
         .bg-card { background-color: var(--bg-secondary); }
@@ -98,23 +99,32 @@
 
         /* Seamless Page Transitions */
         @keyframes pageIn {
-            from { opacity: 0; transform: translateY(10px) scale(0.99); filter: blur(4px); }
-            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+            0% { 
+                opacity: 0; 
+                transform: translateY(20px) scale(0.98); 
+                filter: blur(8px); 
+            }
+            100% { 
+                opacity: 1; 
+                transform: translateY(0) scale(1); 
+                filter: blur(0); 
+            }
         }
 
         .page-transition {
-            animation: pageIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            animation: pageIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            perspective: 1000px;
         }
 
         /* Staggered Entrance Animations */
         @keyframes cascadeUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         .stagger-fade-in > * {
             opacity: 0;
-            animation: cascadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation: cascadeUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
         }
 
         .stagger-fade-in > *:nth-child(1) { animation-delay: 0.05s; }
@@ -122,6 +132,9 @@
         .stagger-fade-in > *:nth-child(3) { animation-delay: 0.15s; }
         .stagger-fade-in > *:nth-child(4) { animation-delay: 0.2s; }
         .stagger-fade-in > *:nth-child(5) { animation-delay: 0.25s; }
+        .stagger-fade-in > *:nth-child(6) { animation-delay: 0.3s; }
+        .stagger-fade-in > *:nth-child(7) { animation-delay: 0.35s; }
+        .stagger-fade-in > *:nth-child(8) { animation-delay: 0.4s; }
 
         @keyframes float {
             0%, 100% { transform: translateY(0); }

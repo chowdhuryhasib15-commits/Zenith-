@@ -20,6 +20,7 @@ const INITIAL_STATE: AppState = {
   pomodoroLogs: [],
   courses: [],
   theme: 'light',
+  syncStatus: 'local-only',
 };
 
 const App: React.FC = () => {
@@ -58,11 +59,12 @@ const App: React.FC = () => {
 
   const updateTheme = (theme: AppTheme) => setState(prev => ({ ...prev, theme }));
 
-  const updateSubjects = (subjects: Subject[]) => setState(prev => ({ ...prev, subjects }));
-  const addGoal = (goal: Goal) => setState(prev => ({ ...prev, goals: [...prev.goals, goal] }));
+  const updateSubjects = (subjects: Subject[]) => setState(prev => ({ ...prev, subjects, syncStatus: 'local-only' }));
+  const addGoal = (goal: Goal) => setState(prev => ({ ...prev, goals: [...prev.goals, goal], syncStatus: 'local-only' }));
   
   const toggleGoal = (id: string, dateStr?: string) => setState(prev => ({
     ...prev,
+    syncStatus: 'local-only',
     goals: prev.goals.map(g => {
       if (g.id !== id) return g;
       if (g.recurrence === 'none') return { ...g, isDone: !g.isDone };
@@ -78,19 +80,27 @@ const App: React.FC = () => {
     })
   }));
 
-  const deleteGoal = (id: string) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }));
-  const addResult = (result: ExamResult) => setState(prev => ({ ...prev, results: [...prev.results, result] }));
-  const deleteResult = (id: string) => setState(prev => ({ ...prev, results: prev.results.filter(r => r.id !== id) }));
+  const deleteGoal = (id: string) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id), syncStatus: 'local-only' }));
+  const addResult = (result: ExamResult) => setState(prev => ({ ...prev, results: [...prev.results, result], syncStatus: 'local-only' }));
+  const deleteResult = (id: string) => setState(prev => ({ ...prev, results: prev.results.filter(r => r.id !== id), syncStatus: 'local-only' }));
   
   const logPomodoro = (log: PomodoroLog) => setState(prev => ({ 
     ...prev, 
-    pomodoroLogs: [...prev.pomodoroLogs, log] 
+    pomodoroLogs: [...prev.pomodoroLogs, log],
+    syncStatus: 'local-only'
   }));
 
-  const setSyllabusDeadline = (date: string) => setState(prev => ({ ...prev, syllabusDeadline: date }));
+  const setSyllabusDeadline = (date: string) => setState(prev => ({ ...prev, syllabusDeadline: date, syncStatus: 'local-only' }));
   
-  const addCourse = (course: Course) => setState(prev => ({ ...prev, courses: [...prev.courses, course] }));
-  const deleteCourse = (id: string) => setState(prev => ({ ...prev, courses: prev.courses.filter(c => c.id !== id) }));
+  const addCourse = (course: Course) => setState(prev => ({ ...prev, courses: [...prev.courses, course], syncStatus: 'local-only' }));
+  const deleteCourse = (id: string) => setState(prev => ({ ...prev, courses: prev.courses.filter(c => c.id !== id), syncStatus: 'local-only' }));
+
+  const onSyncStart = () => setState(prev => ({ ...prev, syncStatus: 'syncing' }));
+  const onSyncComplete = () => setState(prev => ({ ...prev, syncStatus: 'synced', lastSyncedAt: new Date().toISOString() }));
+  
+  const onRestore = (newState: AppState) => {
+    setState({ ...newState, syncStatus: 'synced', lastSyncedAt: new Date().toISOString() });
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -110,7 +120,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen overflow-hidden transition-colors duration-300">
+    <div className="flex min-h-screen overflow-hidden transition-colors duration-500">
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
@@ -119,8 +129,12 @@ const App: React.FC = () => {
         onUpdateUser={updateUser}
         theme={state.theme}
         onUpdateTheme={updateTheme}
+        state={state}
+        onSyncStart={onSyncStart}
+        onSyncComplete={onSyncComplete}
+        onRestore={onRestore}
       />
-      <main className="flex-1 lg:ml-64 p-4 lg:p-8 pt-20 lg:pt-8 overflow-y-auto max-h-screen custom-scrollbar relative">
+      <main className="flex-1 lg:ml-64 p-4 lg:p-8 pt-20 lg:pt-8 overflow-y-auto max-h-screen custom-scrollbar relative bg-transparent">
         <div key={activeTab} className="page-transition min-h-full">
           {renderContent()}
         </div>

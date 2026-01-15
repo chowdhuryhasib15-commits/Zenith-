@@ -1,14 +1,15 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { NAV_ITEMS } from '../constants';
-import { User, AppTheme } from '../types';
+import { User, AppTheme, AppState } from '../types';
 import { GoogleGenAI } from "@google/genai";
+import { getSyncReport } from '../services/geminiService';
 import { 
   Menu, X, LogOut, ChevronUp, 
   Palette, Check, Sparkles, Wand2, 
   Smile, Frown, Angry, Zap, Laugh, User as UserIcon, Loader2, Upload,
-  Book, Info, ExternalLink, Mail, Github, Heart,
-  BookOpen, Timer, Target, Instagram, Facebook, Monitor
+  Book, Info, ExternalLink, Mail, Github, Heart, Cloud,
+  BookOpen, Timer, Target, Instagram, Facebook, Monitor, Download, Key, Shield
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -19,6 +20,10 @@ interface SidebarProps {
   onUpdateUser: (user: User) => void;
   theme: AppTheme;
   onUpdateTheme: (theme: AppTheme) => void;
+  state: AppState;
+  onSyncStart: () => void;
+  onSyncComplete: () => void;
+  onRestore: (state: AppState) => void;
 }
 
 const AVATAR_SEEDS = Array.from({ length: 50 }, (_, i) => `ZenithUser_${i + 1}`);
@@ -40,13 +45,17 @@ const THEMES: { id: AppTheme; label: string; color: string; desc: string }[] = [
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ 
-  activeTab, setActiveTab, user, onLogout, onUpdateUser, theme, onUpdateTheme 
+  activeTab, setActiveTab, user, onLogout, onUpdateUser, theme, onUpdateTheme, 
+  state, onSyncStart, onSyncComplete, onRestore
 }) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [pickerTab, setPickerTab] = useState<'profile' | 'manual' | 'about' | 'theme'>('profile');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [cloudKeyInput, setCloudKeyInput] = useState('');
+  const [pickerTab, setPickerTab] = useState<'profile' | 'manual' | 'about' | 'theme' | 'sync'>('profile');
   
   const [tempProfile, setTempProfile] = useState({
     name: user?.name || '',
@@ -95,28 +104,66 @@ const Sidebar: React.FC<SidebarProps> = ({
     return getFullAvatarUrl(tempProfile.seed, tempProfile.expression);
   }, [tempProfile.seed, tempProfile.expression, tempProfile.customUrl]);
 
+  const handleSync = async () => {
+    setIsSyncing(true);
+    onSyncStart();
+    setSyncMessage(null);
+    
+    // Simulate Neural Uplink
+    await new Promise(r => setTimeout(r, 2000));
+    
+    const report = await getSyncReport(state);
+    setSyncMessage(report);
+    onSyncComplete();
+    setIsSyncing(false);
+  };
+
+  const exportData = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `zenith_backup_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const getCloudKey = () => {
+    const encrypted = btoa(JSON.stringify(state));
+    navigator.clipboard.writeText(encrypted);
+    alert("Cloud Key copied to clipboard. Paste this on any device to restore your data.");
+  };
+
+  const restoreFromKey = () => {
+    try {
+      const decoded = JSON.parse(atob(cloudKeyInput));
+      if (window.confirm("This will overwrite your current local data. Continue?")) {
+        onRestore(decoded);
+        setCloudKeyInput('');
+        alert("Restoration complete. Welcome back.");
+      }
+    } catch (e) {
+      alert("Invalid Cloud Key. Please check the string and try again.");
+    }
+  };
+
   const handleGenerateMagicAvatar = async () => {
     setIsGenerating(true);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const prompt = "A 3D Disney-Pixar style character render of a young South Asian man with tan skin, voluminous messy black curly hair, short beard, expressive eyes, wearing a white t-shirt. Studio lighting, soft background, 4k high quality.";
-      
+      const prompt = "A 3D Disney-Pixar style character render of a young person, creative, academic, expressive eyes, studio lighting, soft background, high quality.";
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [{ text: prompt }] },
       });
 
-      const parts = response.candidates?.[0]?.content?.parts || [];
-      for (const part of parts) {
+      for (const part of response.candidates?.[0]?.content?.parts || []) {
         if (part.inlineData) {
-          const base64Data = part.inlineData.data;
-          const imageUrl = `data:image/png;base64,${base64Data}`;
-          setTempProfile(prev => ({ ...prev, customUrl: imageUrl }));
+          setTempProfile(prev => ({ ...prev, customUrl: `data:image/png;base64,${part.inlineData.data}` }));
           break;
         }
       }
     } catch (error) {
-      console.error("Avatar generation failed", error);
       alert("Magic generation failed. Please try a standard avatar.");
     } finally {
       setIsGenerating(false);
@@ -127,9 +174,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setTempProfile(prev => ({ ...prev, customUrl: reader.result as string }));
-      };
+      reader.onloadend = () => setTempProfile(prev => ({ ...prev, customUrl: reader.result as string }));
       reader.readAsDataURL(file);
     }
   };
@@ -144,16 +189,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         photoURL: currentPreviewUrl 
       });
       setIsPickerOpen(false);
-      setIsMenuOpen(false);
-    }
-  };
-
-  const handleSignOut = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (window.confirm("Are you sure you want to sign out? Your session data will be preserved locally.")) {
-      setIsMenuOpen(false);
-      onLogout();
     }
   };
 
@@ -200,25 +235,20 @@ const Sidebar: React.FC<SidebarProps> = ({
             {isMenuOpen && (
               <div className="absolute bottom-full left-0 w-full mb-4 bg-card rounded-3xl shadow-2xl border border-theme p-2 animate-in slide-in-from-bottom-4 z-[60]">
                 <button onClick={() => { setIsPickerOpen(true); setPickerTab('profile'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
-                  <Palette size={16} className="text-indigo-500" />
-                  Identity Studio
+                  <Palette size={16} className="text-indigo-500" /> Identity Studio
+                </button>
+                <button onClick={() => { setIsPickerOpen(true); setPickerTab('sync'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
+                  <Cloud size={16} className="text-indigo-500" /> Cloud Sync
                 </button>
                 <button onClick={() => { setIsPickerOpen(true); setPickerTab('theme'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
-                  <Monitor size={16} className="text-indigo-500" />
-                  Interface Theme
+                  <Monitor size={16} className="text-indigo-500" /> Interface Theme
                 </button>
                 <button onClick={() => { setIsPickerOpen(true); setPickerTab('manual'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
-                  <Book size={16} className="text-indigo-500" />
-                  How to Use
-                </button>
-                <button onClick={() => { setIsPickerOpen(true); setPickerTab('about'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
-                  <Info size={16} className="text-indigo-500" />
-                  About Author
+                  <Book size={16} className="text-indigo-500" /> Operating Manual
                 </button>
                 <div className="h-px bg-slate-50 my-2 mx-2" />
-                <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-rose-50 text-rose-500 font-bold text-xs transition-all">
-                  <LogOut size={16} />
-                  Sign Out
+                <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-rose-50 text-rose-500 font-bold text-xs transition-all">
+                  <LogOut size={16} /> Sign Out
                 </button>
               </div>
             )}
@@ -243,39 +273,33 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex items-center justify-between mb-8 shrink-0">
                <div className="flex items-center gap-5">
                  <div className="p-4 bg-indigo-600 text-white rounded-2xl animate-float">
-                   <Wand2 size={24} />
+                   {pickerTab === 'sync' ? <Cloud size={24} /> : <Wand2 size={24} />}
                  </div>
                  <div>
                    <h2 className="text-3xl font-black text-theme tracking-tight">
-                     {pickerTab === 'profile' ? 'Identity Studio' : pickerTab === 'manual' ? 'Operating Manual' : pickerTab === 'theme' ? 'Interface Theme' : 'The Creator'}
+                     {pickerTab === 'profile' ? 'Identity Studio' : pickerTab === 'manual' ? 'Operating Manual' : pickerTab === 'theme' ? 'Interface Theme' : pickerTab === 'sync' ? 'Cloud Sync & Data' : 'The Creator'}
                    </h2>
-                   <p className="text-xs font-bold text-theme-secondary uppercase tracking-widest mt-1">Refine your academic journey</p>
+                   <p className="text-xs font-bold text-theme-secondary uppercase tracking-widest mt-1">Zenith Intelligence Portal</p>
                  </div>
                </div>
-               <button onClick={() => setIsPickerOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl text-theme-secondary transition-transform active:scale-90">
-                 <X size={24} />
-               </button>
+               <button onClick={() => setIsPickerOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl text-theme-secondary transition-transform active:scale-90"><X size={24} /></button>
             </div>
 
             <div className="flex gap-4 mb-8 shrink-0 border-b border-theme pb-4 overflow-x-auto no-scrollbar pr-4">
                {[
                  { id: 'profile', label: 'Profile', icon: <UserIcon size={16} /> },
+                 { id: 'sync', label: 'Cloud Sync', icon: <Cloud size={16} /> },
                  { id: 'theme', label: 'Theme', icon: <Monitor size={16} /> },
                  { id: 'manual', label: 'Manual', icon: <Book size={16} /> },
                  { id: 'about', label: 'Author', icon: <Info size={16} /> }
                ].map(tab => (
-                 <button
-                   key={tab.id}
-                   onClick={() => setPickerTab(tab.id as any)}
-                   className={`px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all whitespace-nowrap ${pickerTab === tab.id ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-theme-secondary hover:bg-slate-200'}`}
-                 >
-                   {tab.icon}
-                   {tab.label}
+                 <button key={tab.id} onClick={() => setPickerTab(tab.id as any)} className={`px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all whitespace-nowrap ${pickerTab === tab.id ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-theme-secondary hover:bg-slate-200'}`}>
+                   {tab.icon} {tab.label}
                  </button>
                ))}
             </div>
 
-            <div className="flex-1 overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-hidden">
               {pickerTab === 'profile' ? (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 flex-1 overflow-hidden">
                   <div className="lg:col-span-4 space-y-8 overflow-y-auto custom-scrollbar pr-4">
@@ -286,154 +310,142 @@ const Sidebar: React.FC<SidebarProps> = ({
                              <Loader2 className="animate-spin text-indigo-600" size={40} />
                            </div>
                          )}
-                         <img src={currentPreviewUrl} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-700" />
+                         <img src={currentPreviewUrl} className="w-full h-full object-cover" />
                        </div>
                        <div className="w-full space-y-3">
-                         <button 
-                          onClick={handleGenerateMagicAvatar}
-                          disabled={isGenerating}
-                          className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg hover:shadow-indigo-200 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
-                         >
-                           <Sparkles size={16} />
-                           Magic Gen Avatar
+                         <button onClick={handleGenerateMagicAvatar} disabled={isGenerating} className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+                           <Sparkles size={16} /> Magic Gen Avatar
                          </button>
-                         <button 
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-full bg-white text-slate-700 border border-slate-200 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-                         >
-                           <Upload size={16} />
-                           Import Image
+                         <button onClick={() => fileInputRef.current?.click()} className="w-full bg-white text-slate-700 border border-slate-200 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
+                           <Upload size={16} /> Import Image
                          </button>
                          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
                        </div>
                     </div>
-
-                    <div className="space-y-6">
-                      <h3 className="text-xs font-black text-theme-secondary uppercase tracking-widest ml-1">Profile Details</h3>
-                      <div className="space-y-4">
-                        <div className="relative group">
-                          <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={18} />
-                          <input className="w-full bg-slate-50 border border-theme rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all" placeholder="Full Name" value={tempProfile.name} onChange={e => setTempProfile({...tempProfile, name: e.target.value})} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <input type="number" className="w-full bg-slate-50 border border-theme rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all" placeholder="Age" value={tempProfile.age} onChange={e => setTempProfile({...tempProfile, age: parseInt(e.target.value) || 0})} />
-                          <input className="w-full bg-slate-50 border border-theme rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all" placeholder="Level" value={tempProfile.education} onChange={e => setTempProfile({...tempProfile, education: e.target.value})} />
-                        </div>
+                    <div className="space-y-4">
+                      <input className="w-full bg-slate-50 border border-theme rounded-2xl px-6 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white" placeholder="Full Name" value={tempProfile.name} onChange={e => setTempProfile({...tempProfile, name: e.target.value})} />
+                      <div className="grid grid-cols-2 gap-4">
+                        <input type="number" className="w-full bg-slate-50 border border-theme rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 outline-none" placeholder="Age" value={tempProfile.age} onChange={e => setTempProfile({...tempProfile, age: parseInt(e.target.value) || 0})} />
+                        <input className="w-full bg-slate-50 border border-theme rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 outline-none" placeholder="Level" value={tempProfile.education} onChange={e => setTempProfile({...tempProfile, education: e.target.value})} />
                       </div>
                     </div>
-
-                    <div className="pt-4 flex gap-3">
-                       <button onClick={applyChanges} className="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-black text-sm transition-all hover:bg-indigo-600 shadow-xl shadow-slate-200">Save Identity</button>
-                       <button onClick={() => setIsPickerOpen(false)} className="flex-1 bg-slate-100 text-slate-500 py-4 rounded-2xl font-bold text-sm hover:bg-slate-200">Close</button>
-                    </div>
+                    <button onClick={applyChanges} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm transition-all hover:bg-indigo-600 shadow-xl">Save Identity</button>
                   </div>
-
-                  <div className="lg:col-span-8 flex flex-col overflow-hidden bg-slate-50 rounded-[40px] p-8 border border-theme shadow-inner">
-                    <div className="flex items-center justify-between mb-6 shrink-0">
-                       <p className="text-xs font-black text-theme-secondary uppercase tracking-widest">Avatar DNA Gallery</p>
-                       <div className="flex gap-2">
-                         {EXPRESSIONS.map(expr => (
-                           <button key={expr.id} onClick={() => { setTempProfile({...tempProfile, expression: expr.id, customUrl: ''}); }} className={`p-2 rounded-xl border transition-all ${tempProfile.expression === expr.id ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg scale-110' : 'bg-white border-theme text-slate-400 hover:border-indigo-300'}`} title={expr.label}> {expr.icon} </button>
-                         ))}
-                       </div>
-                    </div>
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-4 overflow-y-auto custom-scrollbar pr-2">
+                  <div className="lg:col-span-8 overflow-y-auto custom-scrollbar pr-2 bg-slate-50 rounded-[40px] p-8 border border-theme shadow-inner">
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-4">
                       {AVATAR_SEEDS.map((seed, idx) => (
-                        <button key={idx} onClick={() => setTempProfile({...tempProfile, seed, customUrl: ''})} className={`aspect-square p-2 rounded-2xl border-2 transition-all group ${tempProfile.seed === seed && !tempProfile.customUrl.includes('data:image') ? 'border-indigo-600 bg-white ring-4 ring-indigo-50 shadow-md' : 'border-transparent bg-white/50 hover:bg-white hover:border-indigo-200'}`}>
-                          <img src={getFullAvatarUrl(seed, tempProfile.expression)} className="w-full h-full object-contain group-hover:scale-110 transition-transform" />
+                        <button key={idx} onClick={() => setTempProfile({...tempProfile, seed, customUrl: ''})} className={`aspect-square p-2 rounded-2xl border-2 transition-all ${tempProfile.seed === seed && !tempProfile.customUrl.includes('data:image') ? 'border-indigo-600 bg-white ring-4 ring-indigo-50 shadow-md' : 'border-transparent bg-white/50 hover:bg-white hover:border-indigo-200'}`}>
+                          <img src={getFullAvatarUrl(seed, tempProfile.expression)} className="w-full h-full object-contain" />
                         </button>
                       ))}
                     </div>
                   </div>
+                </div>
+              ) : pickerTab === 'sync' ? (
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 py-4 space-y-10">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="bg-slate-900 rounded-[48px] p-10 text-white relative overflow-hidden group">
+                         <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/20 rounded-bl-[100px] -z-0 pointer-events-none group-hover:scale-125 transition-transform" />
+                         <div className="relative z-10 flex flex-col h-full justify-between min-h-[300px]">
+                            <div>
+                               <div className="p-4 bg-white/10 rounded-3xl w-fit mb-6 backdrop-blur-md">
+                                  <Cloud size={32} className="text-indigo-400" />
+                               </div>
+                               <h3 className="text-3xl font-black tracking-tighter">Zenith Cloud</h3>
+                               <p className="text-slate-400 font-medium mt-2 leading-relaxed">Simulate a neural uplink to secure your data in the academic cloud. Merges local state with remote backup.</p>
+                            </div>
+                            
+                            <div className="space-y-4">
+                               {syncMessage && (
+                                 <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300 animate-in slide-in-from-bottom-2">
+                                    {syncMessage}
+                                 </div>
+                               )}
+                               <button onClick={handleSync} disabled={isSyncing} className="w-full bg-white text-slate-900 py-6 rounded-[32px] font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-400 hover:text-white transition-all disabled:opacity-50 flex items-center justify-center gap-3">
+                                  {isSyncing ? <Loader2 size={20} className="animate-spin" /> : <Zap size={16} />}
+                                  {isSyncing ? 'Establishing Uplink...' : 'Synchronize Now'}
+                               </button>
+                            </div>
+                         </div>
+                      </div>
+
+                      <div className="space-y-6">
+                         <div className="p-8 bg-slate-50 border border-theme rounded-[40px] space-y-6">
+                            <h4 className="text-xs font-black text-theme-secondary uppercase tracking-[0.3em] flex items-center gap-2">
+                               <Shield size={14} /> Vault Portability
+                            </h4>
+                            <div className="space-y-4">
+                               <button onClick={exportData} className="w-full flex items-center justify-between p-6 bg-white border border-theme rounded-3xl hover:border-indigo-500 transition-all group">
+                                  <div className="flex items-center gap-4">
+                                     <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl group-hover:scale-110 transition-transform"><Download size={20} /></div>
+                                     <div className="text-left"><p className="text-sm font-black text-slate-900">Export Backup</p><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Local JSON File</p></div>
+                                  </div>
+                                  <ChevronUp size={20} className="rotate-90 text-slate-300" />
+                               </button>
+                               <button onClick={getCloudKey} className="w-full flex items-center justify-between p-6 bg-white border border-theme rounded-3xl hover:border-indigo-500 transition-all group">
+                                  <div className="flex items-center gap-4">
+                                     <div className="p-3 bg-slate-900 text-white rounded-2xl group-hover:scale-110 transition-transform"><Key size={20} /></div>
+                                     <div className="text-left"><p className="text-sm font-black text-slate-900">Generate Cloud Key</p><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Clipboard Base64</p></div>
+                                  </div>
+                                  <ChevronUp size={20} className="rotate-90 text-slate-300" />
+                               </button>
+                            </div>
+                         </div>
+
+                         <div className="p-8 bg-indigo-50 border border-indigo-100 rounded-[40px] space-y-6">
+                            <h4 className="text-xs font-black text-indigo-400 uppercase tracking-[0.3em] flex items-center gap-2">
+                               <Target size={14} /> Device Recovery
+                            </h4>
+                            <div className="relative">
+                               <input 
+                                  value={cloudKeyInput}
+                                  onChange={e => setCloudKeyInput(e.target.value)}
+                                  className="w-full bg-white border border-indigo-200 rounded-3xl px-6 py-5 pr-32 text-[10px] font-bold text-indigo-900 placeholder:text-indigo-200 outline-none focus:ring-4 focus:ring-indigo-100 transition-all" 
+                                  placeholder="Paste Cloud Key here..." 
+                               />
+                               <button onClick={restoreFromKey} className="absolute right-2 top-2 bottom-2 px-6 bg-indigo-600 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-indigo-700 transition-all active:scale-95">Restore</button>
+                            </div>
+                         </div>
+                      </div>
+                   </div>
                 </div>
               ) : pickerTab === 'theme' ? (
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 py-4">
                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                       {THEMES.map((t) => (
-                        <button
-                          key={t.id}
-                          onClick={() => onUpdateTheme(t.id)}
-                          className={`flex flex-col text-left p-6 rounded-[32px] border-2 transition-all relative group overflow-hidden ${theme === t.id ? 'border-indigo-600 bg-indigo-50/50 shadow-xl' : 'border-theme bg-white hover:bg-slate-50'}`}
-                        >
+                        <button key={t.id} onClick={() => onUpdateTheme(t.id)} className={`flex flex-col text-left p-6 rounded-[32px] border-2 transition-all relative group overflow-hidden ${theme === t.id ? 'border-indigo-600 bg-indigo-50/50 shadow-xl' : 'border-theme bg-white hover:bg-slate-50'}`}>
                           <div className={`w-12 h-12 rounded-2xl mb-4 shadow-inner ${t.color}`} />
                           <h4 className="text-sm font-black text-theme tracking-tight uppercase">{t.label}</h4>
                           <p className="text-[10px] font-bold text-theme-secondary uppercase tracking-widest mt-1">{t.desc}</p>
-                          {theme === t.id && (
-                            <div className="absolute top-4 right-4 text-indigo-600 animate-in zoom-in">
-                              <Check size={20} strokeWidth={3} />
-                            </div>
-                          )}
+                          {theme === t.id && <div className="absolute top-4 right-4 text-indigo-600 animate-in zoom-in"><Check size={20} strokeWidth={3} /></div>}
                         </button>
                       ))}
                    </div>
                 </div>
               ) : pickerTab === 'manual' ? (
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-8 animate-in fade-in slide-in-from-bottom-4 py-4">
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-8 py-4 animate-in fade-in slide-in-from-bottom-4">
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="p-8 bg-slate-50 rounded-[32px] border border-theme space-y-4">
-                         <h4 className="text-lg font-black text-theme flex items-center gap-3"><BookOpen size={20} className="text-indigo-600" /> Subject Mastery</h4>
-                         <p className="text-sm text-theme-secondary leading-relaxed font-medium">Load the <b>HSC Syllabus Preset</b> to instantly populate your subjects. Track progress chapter by chapter. Use the AI wand to auto-generate missing chapters for any custom subject.</p>
+                         <h4 className="text-lg font-black text-theme flex items-center gap-3"><Cloud size={20} className="text-indigo-600" /> Hybrid Sync</h4>
+                         <p className="text-sm text-theme-secondary leading-relaxed font-medium">Zenith uses a <b>Local-First</b> architecture. Your data stays on your device for speed and privacy, but can be synced to our simulated cloud or exported via <b>Cloud Keys</b> for seamless mobility.</p>
                       </div>
                       <div className="p-8 bg-slate-50 rounded-[32px] border border-theme space-y-4">
                          <h4 className="text-lg font-black text-theme flex items-center gap-3"><Zap size={20} className="text-indigo-600" /> Spaced Repetition</h4>
-                         <p className="text-sm text-theme-secondary leading-relaxed font-medium">The <b>Revision Lab</b> schedules reminders using the scientific 1-3-7-14-30 day algorithm. Click "Reinforce" to level up a topic and extend its retention window.</p>
-                      </div>
-                      <div className="p-8 bg-slate-50 rounded-[32px] border border-theme space-y-4">
-                         <h4 className="text-lg font-black text-theme flex items-center gap-3"><Timer size={20} className="text-indigo-600" /> Focus Laboratory</h4>
-                         <p className="text-sm text-theme-secondary leading-relaxed font-medium">Use the <b>Pomodoro Timer</b> to enter flow states. Sessions are automatically logged and analyzed by AI on the dashboard to show your "Cognitive Load" distribution.</p>
-                      </div>
-                      <div className="p-8 bg-slate-50 rounded-[32px] border border-theme space-y-4">
-                         <h4 className="text-lg font-black text-theme flex items-center gap-3"><Target size={20} className="text-indigo-600" /> Goal Architect</h4>
-                         <p className="text-sm text-theme-secondary leading-relaxed font-medium">Plan daily habits or one-time milestones in the <b>Planner</b>. Recurring goals automatically reset, helping you build consistent academic discipline.</p>
+                         <p className="text-sm text-theme-secondary leading-relaxed font-medium">The <b>Revision Lab</b> schedules reminders using the scientific 1-3-7-14-30 day algorithm. Level up topics to extend retention windows indefinitely.</p>
                       </div>
                    </div>
                 </div>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center space-y-8 animate-in fade-in zoom-in-95 overflow-hidden py-4 text-center">
+                <div className="flex-1 flex flex-col items-center justify-center space-y-8 py-4 text-center">
                    <div className="space-y-4 max-w-2xl px-6">
-                      <div className="space-y-1">
-                        <h3 className="text-6xl font-black text-theme tracking-tighter leading-tight">Hasib Chowdhury</h3>
-                        <p className="text-indigo-600 font-black text-sm uppercase tracking-[0.5em] mt-2">Developer & Aesthetic Visionary</p>
-                      </div>
-                      
+                      <h3 className="text-6xl font-black text-theme tracking-tighter leading-tight">Hasib Chowdhury</h3>
+                      <p className="text-indigo-600 font-black text-sm uppercase tracking-[0.5em]">Developer & Aesthetic Visionary</p>
                       <div className="h-1 w-24 bg-gradient-to-r from-indigo-500 to-violet-500 mx-auto rounded-full my-6" />
-
-                      <p className="text-xl text-theme-secondary font-medium leading-relaxed italic">
-                        "I built <b>Zenith</b> as a personal laboratory for growth. My mission is to merge advanced AI capabilities with minimal, high-end interfaces that actually make studying enjoyable."
-                      </p>
-
-                      <div className="flex flex-wrap justify-center gap-4 pt-6">
-                         <div className="flex items-center gap-3 px-8 py-3 bg-slate-50 border border-theme rounded-2xl text-slate-600 font-bold text-sm hover:bg-white hover:border-indigo-200 transition-all group">
-                            <Mail size={16} className="text-indigo-500 group-hover:scale-110 transition-transform" /> 
-                            drip.hasib@gmail.com
-                         </div>
-                         <div className="flex items-center gap-3 px-8 py-3 bg-indigo-50 rounded-2xl text-indigo-600 font-bold text-sm">
-                            <Heart size={16} fill="currentColor" /> Created for Flow
-                         </div>
-                      </div>
-
-                      <div className="pt-8">
-                         <a 
-                          href="https://hasibdesigns.lovable.app" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-4 px-14 py-5 bg-slate-900 text-white rounded-full font-black uppercase tracking-[0.2em] text-xs hover:bg-indigo-600 hover:shadow-2xl hover:shadow-indigo-200 hover:-translate-y-1 transition-all group"
-                         >
-                           Portfolio Studio
-                           <ExternalLink size={18} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                         </a>
-                      </div>
-
+                      <p className="text-xl text-theme-secondary font-medium italic">"Zenith is a personal laboratory for growth. We merge AI with high-end interfaces to make studying actually enjoyable."</p>
                       <div className="flex justify-center items-center gap-10 pt-10">
-                         <a href="https://www.instagram.com/drip.hasib/" target="_blank" rel="noopener noreferrer" className="p-4 bg-white border border-theme rounded-3xl shadow-sm text-slate-400 hover:text-indigo-500 hover:scale-110 hover:shadow-lg transition-all">
-                           <Instagram size={24} />
-                         </a>
-                         <a href="https://www.facebook.com/hasib.chowdhury.355138" target="_blank" rel="noopener noreferrer" className="p-4 bg-white border border-theme rounded-3xl shadow-sm text-slate-400 hover:text-indigo-500 hover:scale-110 hover:shadow-lg transition-all">
-                           <Facebook size={24} />
-                         </a>
-                         <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="p-4 bg-white border border-theme rounded-3xl shadow-sm text-slate-400 hover:text-indigo-500 hover:scale-110 hover:shadow-lg transition-all">
-                           <Github size={24} />
-                         </a>
+                         <a href="https://www.instagram.com/drip.hasib/" target="_blank" className="p-4 bg-white border border-theme rounded-3xl text-slate-400 hover:text-indigo-500 hover:scale-110 transition-all"><Instagram size={24} /></a>
+                         <a href="https://www.facebook.com/hasib.chowdhury.355138/" target="_blank" className="p-4 bg-white border border-theme rounded-3xl text-slate-400 hover:text-indigo-500 hover:scale-110 transition-all"><Facebook size={24} /></a>
+                         <a href="https://github.com" target="_blank" className="p-4 bg-white border border-theme rounded-3xl text-slate-400 hover:text-indigo-500 hover:scale-110 transition-all"><Github size={24} /></a>
                       </div>
                    </div>
                 </div>
