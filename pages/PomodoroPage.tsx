@@ -249,20 +249,28 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     });
   }, [logs]);
 
-  // Enhanced Analytics Calculations
+  // Updated Aggregated Subject Distribution for Donut Chart (stripping Paper 1/2)
   const subjectDistributionData = useMemo(() => {
-    const distribution: Record<string, number> = {};
+    const distribution: Record<string, { value: number, color: string }> = {};
+    
     logs.forEach(log => {
-      distribution[log.subjectId] = (distribution[log.subjectId] || 0) + log.duration;
+      const sub = subjects.find(s => s.id === log.subjectId);
+      if (!sub) return;
+      
+      // Normalize name to aggregate Papers (e.g. Physics 1st & 2nd -> Physics)
+      const normalizedName = sub.name.replace(/\s*(1st|2nd)?\s*Paper/gi, '').trim();
+      
+      if (!distribution[normalizedName]) {
+        distribution[normalizedName] = { value: 0, color: sub.color };
+      }
+      distribution[normalizedName].value += log.duration;
     });
-    return Object.entries(distribution).map(([subId, duration]) => {
-      const sub = subjects.find(s => s.id === subId);
-      return {
-        name: sub?.name || 'Unknown',
-        value: duration,
-        color: sub?.color || '#cbd5e1'
-      };
-    }).sort((a, b) => b.value - a.value);
+
+    return Object.entries(distribution).map(([name, data]) => ({
+      name,
+      value: data.value,
+      color: data.color
+    })).sort((a, b) => b.value - a.value);
   }, [logs, subjects]);
 
   const radius = 130;
