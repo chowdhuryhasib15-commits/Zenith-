@@ -3,12 +3,13 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Subject, PomodoroLog, AppState } from '../types';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
-  CartesianGrid
+  CartesianGrid, PieChart, Pie, Cell, Legend, AreaChart, Area
 } from 'recharts';
 import { 
   Play, Pause, X, 
   Settings2, CheckCircle2, Flame, Trophy, Clock, Trash2, 
-  Download, Upload, RefreshCw, Lock, ChevronDown, Volume2, VolumeX
+  Download, Upload, RefreshCw, Lock, ChevronDown, Volume2, VolumeX,
+  PieChart as PieIcon, TrendingUp, Activity
 } from 'lucide-react';
 
 interface PomodoroPageProps {
@@ -42,7 +43,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     const result: Subject[] = [];
     
     subjects.forEach(s => {
-      // Strip "1st Paper", "2nd Paper", "Paper" etc.
       const baseName = s.name.replace(/\s*(1st|2nd)?\s*Paper/gi, '').trim();
       if (!seen.has(baseName)) {
         seen.add(baseName);
@@ -51,6 +51,23 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     });
     return result;
   }, [subjects]);
+
+  const currentSubject = subjects.find(s => s.id === selectedSub);
+  const currentDisplaySubject = pomodoroSubjects.find(s => s.id === selectedSub);
+
+  // Dynamic Browser Tab Title Update
+  useEffect(() => {
+    if (isActive) {
+      const modeEmoji = mode === 'focus' ? '🎯' : '☕';
+      const modeStr = mode === 'focus' ? 'Focus' : 'Break';
+      const separator = seconds % 2 === 0 ? ':' : ' ';
+      const timeDisplay = `${String(minutes).padStart(2, '0')}${separator}${String(seconds).padStart(2, '0')}`;
+      document.title = `${timeDisplay} ${modeEmoji} ${modeStr}`;
+    } else {
+      document.title = 'ZENITH - Reach Your Peak';
+    }
+    return () => { document.title = 'ZENITH - Reach Your Peak'; };
+  }, [isActive, minutes, seconds, mode]);
 
   const totalSeconds = (mode === 'focus' ? focusDuration : breakDuration) * 60;
   const currentSeconds = minutes * 60 + seconds;
@@ -76,11 +93,10 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   const playSound = (type: 'complete' | 'transition') => {
     if (isMuted) return;
     try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
       const ctx = new AudioContext();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      
       osc.type = 'sine';
       if (type === 'complete') {
         osc.frequency.setValueAtTime(880, ctx.currentTime);
@@ -95,7 +111,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
         gain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.02);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
       }
-      
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
@@ -227,27 +242,36 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
       d.setDate(d.getDate() - i);
       return d.toDateString();
     }).reverse();
-
     return last7Days.map(dateStr => {
       const dayLogs = logs.filter(l => new Date(l.timestamp).toDateString() === dateStr);
       const total = dayLogs.reduce((acc, l) => acc + l.duration, 0);
-      return { 
-        name: dateStr.split(' ')[0], 
-        minutes: total 
-      };
+      return { name: dateStr.split(' ')[0], minutes: total };
     });
   }, [logs]);
+
+  // Enhanced Analytics Calculations
+  const subjectDistributionData = useMemo(() => {
+    const distribution: Record<string, number> = {};
+    logs.forEach(log => {
+      distribution[log.subjectId] = (distribution[log.subjectId] || 0) + log.duration;
+    });
+    return Object.entries(distribution).map(([subId, duration]) => {
+      const sub = subjects.find(s => s.id === subId);
+      return {
+        name: sub?.name || 'Unknown',
+        value: duration,
+        color: sub?.color || '#cbd5e1'
+      };
+    }).sort((a, b) => b.value - a.value);
+  }, [logs, subjects]);
 
   const radius = 130;
   const strokeWidth = 14;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
-  const currentSubject = subjects.find(s => s.id === selectedSub);
-  const currentDisplaySubject = pomodoroSubjects.find(s => s.id === selectedSub);
-
   return (
-    <div className={`min-h-[85vh] flex flex-col transition-all duration-1000 ${isActive ? 'items-center justify-center' : 'space-y-12'}`}>
+    <div className={`min-h-[85vh] flex flex-col transition-all duration-1000 ${isActive ? 'items-center justify-center' : 'space-y-12 pb-24'}`}>
       
       <section className={`flex flex-col items-center justify-center transition-all duration-1000 ${isActive ? 'scale-110 flex-1' : ''}`}>
         {!isActive && (
@@ -255,7 +279,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
             <label className={`block text-[10px] font-black uppercase tracking-[0.3em] mb-4 text-center transition-colors ${hasTriedToStart ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`}>
               {hasTriedToStart ? 'Domain Selection Required' : 'Current Domain'}
             </label>
-            
             <div className="relative" ref={dropdownRef}>
               <button 
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -267,29 +290,20 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                 </span>
                 <ChevronDown size={16} className={`text-theme-secondary transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
-
               {isDropdownOpen && (
                 <div className="absolute top-[calc(100%+12px)] left-0 right-0 glass rounded-[32px] border border-theme shadow-2xl p-2 z-[100] animate-in slide-in-from-top-4 fade-in duration-200 overflow-hidden">
                   <div className="max-h-64 overflow-y-auto custom-scrollbar pr-1">
                     {pomodoroSubjects.length === 0 ? (
-                      <div className="p-4 text-center text-xs font-bold text-theme-secondary uppercase tracking-widest italic opacity-50">
-                        No subjects found
-                      </div>
+                      <div className="p-4 text-center text-xs font-bold text-theme-secondary uppercase tracking-widest italic opacity-50">No subjects found</div>
                     ) : (
                       pomodoroSubjects.map(s => (
                         <button
                           key={s.id}
-                          onClick={() => {
-                            setSelectedSub(s.id);
-                            setIsDropdownOpen(false);
-                            setHasTriedToStart(false);
-                          }}
+                          onClick={() => { setSelectedSub(s.id); setIsDropdownOpen(false); setHasTriedToStart(false); }}
                           className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all text-left group hover:bg-indigo-50/50 ${selectedSub === s.id ? 'bg-indigo-50' : ''}`}
                         >
                           <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: s.color }} />
-                          <span className={`text-xs font-black uppercase tracking-widest truncate ${selectedSub === s.id ? 'text-indigo-600' : 'text-theme'}`}>
-                            {s.name}
-                          </span>
+                          <span className={`text-xs font-black uppercase tracking-widest truncate ${selectedSub === s.id ? 'text-indigo-600' : 'text-theme'}`}>{s.name}</span>
                         </button>
                       ))
                     )}
@@ -301,114 +315,141 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
         )}
 
         <div className="relative flex items-center justify-center p-6 w-[340px] h-[340px]">
-          {isActive && (
-            <div className={`absolute inset-0 rounded-full blur-[100px] transition-all duration-[2000ms] animate-pulse ${mode === 'focus' ? 'bg-indigo-500/20' : 'bg-emerald-500/20'}`} />
-          )}
-          
+          {isActive && <div className={`absolute inset-0 rounded-full blur-[100px] transition-all duration-[2000ms] animate-pulse ${mode === 'focus' ? 'bg-indigo-500/20' : 'bg-emerald-500/20'}`} />}
           <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
             <circle cx="170" cy="170" r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="transparent" className="text-slate-100/50" />
-            <circle 
-              cx="170" cy="170" r={radius} 
-              stroke="currentColor" 
-              strokeWidth={strokeWidth} 
-              fill="transparent" 
-              strokeDasharray={circumference} 
-              style={{ strokeDashoffset, transition: 'stroke-dashoffset 1s linear' }} 
-              strokeLinecap="round" 
-              className={mode === 'focus' ? 'text-indigo-600' : 'text-emerald-500'}
-            />
+            <circle cx="170" cy="170" r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="transparent" strokeDasharray={circumference} style={{ strokeDashoffset, transition: 'stroke-dashoffset 1s linear' }} strokeLinecap="round" className={mode === 'focus' ? 'text-indigo-600' : 'text-emerald-500'} />
           </svg>
-
           <div className="flex flex-col items-center justify-center text-center pointer-events-none z-10">
-            {isActive && currentDisplaySubject && (
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400 mb-4">
-                {currentDisplaySubject.name}
-              </span>
-            )}
+            {isActive && currentDisplaySubject && <span className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400 mb-4">{currentDisplaySubject.name}</span>}
             <div className={`text-[84px] font-black tracking-tighter tabular-nums leading-none transition-colors ${!selectedSub && !isActive ? 'text-slate-200' : 'text-slate-900'}`}>
-              {String(minutes).padStart(2, '0')}
-              <span className={`transition-opacity duration-300 ${seconds % 2 === 0 || !isActive ? 'opacity-100' : 'opacity-20'}`}>:</span>
-              {String(seconds).padStart(2, '0')}
+              {String(minutes).padStart(2, '0')}<span className={`transition-opacity duration-300 ${seconds % 2 === 0 || !isActive ? 'opacity-100' : 'opacity-20'}`}>:</span>{String(seconds).padStart(2, '0')}
             </div>
-            <p className="text-[12px] font-black uppercase tracking-[0.5em] text-slate-400 mt-6 ml-2">
-              {mode === 'focus' ? 'Deep Work' : 'Restoration'}
-            </p>
+            <p className="text-[12px] font-black uppercase tracking-[0.5em] text-slate-400 mt-6 ml-2">{mode === 'focus' ? 'Deep Work' : 'Restoration'}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-8 mt-16 bg-white/80 backdrop-blur-xl p-4 rounded-[40px] border border-slate-100 shadow-2xl transition-all">
           {!isActive ? (
-            <button 
-              onClick={startTimer} 
-              className={`w-20 h-20 rounded-[28px] flex items-center justify-center shadow-2xl transition-all group active:scale-90 ${!selectedSub ? 'bg-slate-100 text-slate-300 border border-slate-200' : 'bg-slate-900 text-white hover:bg-indigo-600'}`}
-            >
+            <button onClick={startTimer} className={`w-20 h-20 rounded-[28px] flex items-center justify-center shadow-2xl transition-all group active:scale-90 ${!selectedSub ? 'bg-slate-100 text-slate-300 border border-slate-200' : 'bg-slate-900 text-white hover:bg-indigo-600'}`}>
               {!selectedSub ? <Lock size={28} /> : <Play size={32} fill="currentColor" className="ml-1 group-hover:scale-110 transition-transform" />}
             </button>
           ) : (
-            <>
-              <button onClick={pauseTimer} className="w-20 h-20 rounded-[28px] bg-slate-900 text-white flex items-center justify-center shadow-xl hover:bg-indigo-600 active:scale-90 transition-all group">
-                <Pause size={32} fill="currentColor" />
-              </button>
-              <button onClick={cancelSession} className="w-20 h-20 rounded-[28px] bg-white text-rose-500 border-2 border-rose-50 flex items-center justify-center shadow-sm hover:bg-rose-50 active:scale-90 transition-all">
-                <X size={32} />
-              </button>
-            </>
+            <><button onClick={pauseTimer} className="w-20 h-20 rounded-[28px] bg-slate-900 text-white flex items-center justify-center shadow-xl hover:bg-indigo-600 active:scale-90 transition-all group"><Pause size={32} fill="currentColor" /></button>
+            <button onClick={cancelSession} className="w-20 h-20 rounded-[28px] bg-white text-rose-500 border-2 border-rose-50 flex items-center justify-center shadow-sm hover:bg-rose-50 active:scale-90 transition-all"><X size={32} /></button></>
           )}
-          {isActive && (
-            <button onClick={handleFinishEarly} className="p-5 text-emerald-600 hover:bg-emerald-50 rounded-[24px] transition-all group">
-              <CheckCircle2 size={28} />
-            </button>
-          )}
-          {!isActive && (
-             <button onClick={() => setShowSettings(true)} className="p-6 text-slate-400 hover:text-indigo-600 transition-all hover:bg-indigo-50 rounded-[24px] group">
-                <Settings2 size={28} />
-             </button>
-          )}
+          {isActive && <button onClick={handleFinishEarly} className="p-5 text-emerald-600 hover:bg-emerald-50 rounded-[24px] transition-all group"><CheckCircle2 size={28} /></button>}
+          {!isActive && <button onClick={() => setShowSettings(true)} className="p-6 text-slate-400 hover:text-indigo-600 transition-all hover:bg-indigo-50 rounded-[24px] group"><Settings2 size={28} /></button>}
         </div>
       </section>
 
       {!isActive && (
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in slide-in-from-bottom-12 duration-1000 max-w-7xl mx-auto w-full px-4">
-          <div className="lg:col-span-8 bg-white p-8 rounded-[48px] border border-slate-100 shadow-sm flex flex-col h-[300px]">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl"><Clock size={20} /></div>
-              <div>
-                <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Focus Momentum</h3>
-                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">7 Day Velocity</p>
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-12 duration-1000 max-w-7xl mx-auto w-full px-4">
+          
+          {/* Main Trend Area Chart */}
+          <div className="lg:col-span-8 bg-white p-10 rounded-[56px] border border-slate-100 shadow-sm flex flex-col h-[400px]">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><Activity size={24} /></div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Focus Velocity</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Rolling 7-Day Performance</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest">
+                <TrendingUp size={14} /> Active Period
               </div>
             </div>
             <div className="flex-1 w-full overflow-hidden">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyData}>
+                <AreaChart data={dailyData}>
+                  <defs>
+                    <linearGradient id="colorFocus" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 900, fill: '#94a3b8' }} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#94a3b8' }} />
                   <YAxis hide />
                   <Tooltip 
-                    cursor={{ fill: '#f8fafc' }}
-                    contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 15px 20px -5px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
+                    cursor={{ stroke: '#6366f1', strokeWidth: 2, strokeDasharray: '5 5' }}
+                    contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)', padding: '16px' }}
                   />
-                  <Bar dataKey="minutes" fill="#6366f1" radius={[8, 8, 0, 0]} barSize={32} />
-                </BarChart>
+                  <Area type="monotone" dataKey="minutes" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorFocus)" />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="lg:col-span-4 grid grid-cols-2 lg:grid-cols-1 gap-6">
-            <div className="bg-slate-900 text-white p-7 rounded-[40px] flex items-center gap-5 shadow-2xl relative overflow-hidden group h-full">
-              <Flame className="text-orange-500 relative z-10" size={24} />
+          {/* Quick Metrics Cards */}
+          <div className="lg:col-span-4 grid grid-cols-1 gap-6">
+            <div className="bg-slate-900 text-white p-10 rounded-[48px] flex items-center gap-6 shadow-2xl relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-125 transition-transform duration-700"><Flame size={120} /></div>
+              <Flame className="text-orange-500 relative z-10" size={32} />
               <div className="relative z-10">
-                <p className="text-3xl font-black tabular-nums leading-none">{streakCount}</p>
-                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">Daily Streak</p>
+                <p className="text-5xl font-black tabular-nums leading-none tracking-tighter">{streakCount}</p>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-2">Daily Streak</p>
               </div>
             </div>
-            <div className="bg-indigo-600 text-white p-7 rounded-[40px] flex items-center gap-5 shadow-xl relative overflow-hidden group h-full">
-              <Trophy className="text-indigo-200 relative z-10" size={24} />
+            <div className="bg-indigo-600 text-white p-10 rounded-[48px] flex items-center gap-6 shadow-xl relative overflow-hidden group">
+              <div className="absolute bottom-0 right-0 p-12 opacity-10 group-hover:rotate-12 transition-transform duration-700"><Trophy size={120} /></div>
+              <Trophy className="text-indigo-200 relative z-10" size={32} />
               <div className="relative z-10">
-                <p className="text-3xl font-black tabular-nums leading-none">{Math.round(totalFocusMinutes / 60)}h</p>
-                <p className="text-[8px] font-black text-indigo-300 uppercase tracking-widest mt-1">Total Focus</p>
+                <p className="text-5xl font-black tabular-nums leading-none tracking-tighter">{Math.round(totalFocusMinutes / 60)}h</p>
+                <p className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.3em] mt-2">Total Focus</p>
               </div>
             </div>
           </div>
+
+          {/* Subject Distribution Donut Chart */}
+          <div className="lg:col-span-12 bg-white p-12 rounded-[64px] border border-slate-100 shadow-sm grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+             <div>
+               <div className="flex items-center gap-4 mb-10">
+                 <div className="p-4 bg-violet-50 text-violet-600 rounded-2xl"><PieIcon size={24} /></div>
+                 <div>
+                   <h3 className="text-2xl font-black text-slate-900 tracking-tight">Domain Distribution</h3>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-1">Focus Balance Analysis</p>
+                 </div>
+               </div>
+               <div className="space-y-4">
+                 {subjectDistributionData.slice(0, 4).map((item, idx) => (
+                   <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                     <div className="flex items-center gap-3">
+                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                       <span className="text-sm font-bold text-slate-700">{item.name}</span>
+                     </div>
+                     <span className="text-sm font-black text-slate-900">{Math.round((item.value / totalFocusMinutes) * 100)}%</span>
+                   </div>
+                 ))}
+                 {subjectDistributionData.length === 0 && <p className="text-slate-400 italic text-sm py-4">No focus data recorded yet.</p>}
+               </div>
+             </div>
+             <div className="h-[300px] w-full flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={subjectDistributionData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={80}
+                      outerRadius={120}
+                      paddingAngle={8}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {subjectDistributionData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)', padding: '12px' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+             </div>
+          </div>
+
         </section>
       )}
 
