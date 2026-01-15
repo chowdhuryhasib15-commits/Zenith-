@@ -74,7 +74,7 @@ const SubjectsPage: React.FC<SubjectsPageProps> = ({ subjects, setSubjects }) =>
   };
 
   const deleteSubject = (id: string) => {
-    setSubjects(subjects.filter(s => s.id !== id));
+    setSubjects(subjects.filter(s => s.id === id));
   };
 
   const addChapter = (subId: string, name: string) => {
@@ -117,7 +117,7 @@ const SubjectsPage: React.FC<SubjectsPageProps> = ({ subjects, setSubjects }) =>
     const chapters = await generateSubjectChapters(sub.name);
     setSubjects(subjects.map(s => {
       if (s.id === sub.id) {
-        const newChapters: Chapter[] = chapters.map(name => ({
+        const newChapters: Chapter[] = chapters.map((name: string) => ({
           id: Math.random().toString(36).substr(2, 9),
           name,
           isCompleted: false,

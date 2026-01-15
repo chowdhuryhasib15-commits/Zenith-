@@ -5,7 +5,7 @@ import { AppState, ExamResult, Subject } from "../types";
 // Correctly initialize GoogleGenAI with named parameter and direct process.env.API_KEY usage
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-export const getStudyInsights = async (state: AppState) => {
+export const getStudyInsights = async (state: AppState): Promise<string[]> => {
   try {
     const prompt = `
       Analyze this student's data and provide brief, actionable study insights. 
@@ -35,15 +35,16 @@ export const getStudyInsights = async (state: AppState) => {
       }
     });
 
-    // Directly access the text property as per guidelines
-    return JSON.parse(response.text).insights;
+    const text = response.text || '{"insights": []}';
+    const json = JSON.parse(text) as { insights: string[] };
+    return json.insights;
   } catch (error) {
     console.error("Gemini Insight Error:", error);
     return ["Stay consistent with your Pomodoro sessions!", "Remember to revise chapters within 7 days of completion.", "Focus on subjects where your marks are currently lower."];
   }
 };
 
-export const getResultPerformanceAnalysis = async (results: ExamResult[], subjects: Subject[]) => {
+export const getResultPerformanceAnalysis = async (results: ExamResult[], subjects: Subject[]): Promise<string[]> => {
   try {
     if (results.length === 0) return ["Start logging your exam results to get personalized performance analysis."];
 
@@ -81,14 +82,16 @@ export const getResultPerformanceAnalysis = async (results: ExamResult[], subjec
       }
     });
 
-    return JSON.parse(response.text).analysis;
+    const text = response.text || '{"analysis": []}';
+    const json = JSON.parse(text) as { analysis: string[] };
+    return json.analysis;
   } catch (error) {
     console.error("Gemini Result Analysis Error:", error);
     return ["Review subjects where your score is below 60%.", "Look for patterns in the types of exams where you struggle (e.g., Quizzes vs Finals).", "Consistency is key to academic success!"];
   }
 };
 
-export const generateSubjectChapters = async (subjectName: string) => {
+export const generateSubjectChapters = async (subjectName: string): Promise<string[]> => {
   try {
     const prompt = `Provide a list of 5-8 common core chapters/topics for the subject: ${subjectName}. Keep it brief.`;
     const response = await ai.models.generateContent({
@@ -108,8 +111,9 @@ export const generateSubjectChapters = async (subjectName: string) => {
         }
       }
     });
-    // Directly access the text property as per guidelines
-    return JSON.parse(response.text).chapters;
+    const text = response.text || '{"chapters": []}';
+    const json = JSON.parse(text) as { chapters: string[] };
+    return json.chapters;
   } catch (error) {
     return ["Introduction", "Core Concepts", "Advanced Application", "Review"];
   }
