@@ -7,7 +7,8 @@ import {
   Palette, Check, Smile, Frown, Angry, Zap, Laugh, User as UserIcon, Loader2, Upload,
   Book, Monitor, Download, RefreshCw, FileJson, History, Trash2, Power,
   Compass, Mountain, Sparkles, Camera, Briefcase, GraduationCap, Info, HelpCircle,
-  Clock, Target, ShieldCheck, Lock, Instagram, Facebook, Github, ExternalLink
+  Clock, Target, ShieldCheck, Lock, Instagram, Facebook, Github, ExternalLink,
+  ChevronRight, BrainCircuit, Activity, Cpu
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -223,14 +224,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <button onClick={() => { setIsPickerOpen(true); setPickerTab('manual'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
                   <Book size={16} className="text-indigo-500" /> Zenith Manual
                 </button>
-                <button onClick={() => { setIsPickerOpen(true); setPickerTab('about'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
-                  <Info size={16} className="text-indigo-500" /> Architect Reveal
-                </button>
                 <button onClick={() => { setIsPickerOpen(true); setPickerTab('theme'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
                   <Monitor size={16} className="text-indigo-500" /> Interface Theme
                 </button>
                 <button onClick={() => { setIsPickerOpen(true); setPickerTab('sync'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
                   <RefreshCw size={16} className="text-indigo-500" /> Sync & Vault
+                </button>
+                {/* Architect Reveal reordered to be just above Sign Out */}
+                <button onClick={() => { setIsPickerOpen(true); setPickerTab('about'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
+                  <Info size={16} className="text-indigo-500" /> Architect Reveal
                 </button>
                 <div className="h-px bg-slate-50 my-2 mx-2" />
                 <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-rose-50 text-rose-500 font-bold text-xs transition-all">
@@ -275,9 +277,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                {[
                  { id: 'profile', label: 'Identity', icon: <UserIcon size={16} /> },
                  { id: 'manual', label: 'Manual', icon: <Book size={16} /> },
-                 { id: 'about', label: 'Creator', icon: <Sparkles size={16} /> },
                  { id: 'theme', label: 'Theme', icon: <Monitor size={16} /> },
-                 { id: 'sync', label: 'Vault', icon: <RefreshCw size={16} /> }
+                 { id: 'sync', label: 'Vault', icon: <RefreshCw size={16} /> },
+                 { id: 'about', label: 'Creator', icon: <Sparkles size={16} /> }
                ].map(tab => (
                  <button key={tab.id} onClick={() => setPickerTab(tab.id as any)} className={`px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all whitespace-nowrap ${pickerTab === tab.id ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-theme-secondary hover:bg-slate-200'}`}>
                    {tab.icon} {tab.label}
@@ -285,10 +287,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                ))}
             </div>
 
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden flex flex-col min-h-0">
               {pickerTab === 'profile' ? (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 h-full overflow-hidden pb-4">
-                  <div className="lg:col-span-5 space-y-6 overflow-y-auto custom-scrollbar pr-4">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 flex-1 min-h-0 overflow-hidden pb-4">
+                  <div className="lg:col-span-5 space-y-6 overflow-y-auto custom-scrollbar pr-4 pb-8">
                     <div className="bg-slate-50 border border-theme rounded-[40px] p-8 shadow-inner space-y-6">
                        <h3 className="text-xs font-black text-indigo-500 uppercase tracking-[0.3em] mb-4">Manual Identity</h3>
                        
@@ -329,7 +331,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </button>
                   </div>
 
-                  <div className="lg:col-span-7 flex flex-col h-full bg-slate-50 border border-theme rounded-[40px] shadow-inner overflow-hidden">
+                  <div className="lg:col-span-7 flex flex-col min-h-0 bg-slate-50 border border-theme rounded-[40px] shadow-inner overflow-hidden">
                     <div className="p-8 pb-4 shrink-0">
                       <h3 className="text-xs font-black text-indigo-500 uppercase tracking-[0.3em] mb-6">Zenith Cyber-Avatars</h3>
                       <div className="flex flex-wrap gap-2 mb-2">
@@ -360,63 +362,133 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                 </div>
               ) : pickerTab === 'manual' ? (
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-6 pb-12">
-                   <div className="max-w-4xl space-y-16">
-                      <section className="space-y-8">
-                        <div className="flex items-center gap-5">
-                          <div className="p-4 bg-indigo-50 text-indigo-600 rounded-3xl"><Book size={32} /></div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-6 pb-12 min-h-0">
+                   <div className="max-w-4xl space-y-16 py-4">
+                      <section className="space-y-10">
+                        <div className="flex items-center gap-6">
+                          <div className="p-5 bg-indigo-600 text-white rounded-3xl shadow-xl shadow-indigo-100 animate-float"><Book size={32} /></div>
                           <div>
-                            <h3 className="text-3xl font-black text-slate-900 tracking-tight">The Zenith Paradigm</h3>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Foundational Operating Protocols</p>
+                            <h3 className="text-4xl font-black text-slate-900 tracking-tighter">THE ZENITH PROTOCOL</h3>
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-[0.4em] mt-2">Foundational Operating Intelligence</p>
                           </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                           <div className="p-8 bg-slate-50 border border-slate-100 rounded-[32px] space-y-4">
-                              <h4 className="text-lg font-black text-slate-900 flex items-center gap-3"><Compass size={20} className="text-indigo-600" /> Syllabus Orchestration</h4>
-                              <p className="text-sm text-slate-500 leading-relaxed">Zenith allows you to import high-fidelity HSC presets or generate custom curricula using our Peak Chapter Engine. Each subject tracks granular completion states to calculate your Global Progress score.</p>
-                           </div>
-                           <div className="p-8 bg-slate-50 border border-slate-100 rounded-[32px] space-y-4">
-                              <h4 className="text-lg font-black text-slate-900 flex items-center gap-3"><History size={20} className="text-indigo-600" /> Spaced Repetition (SRS)</h4>
-                              <p className="text-sm text-slate-500 leading-relaxed">Our revision engine utilizes an expanding interval protocol: 1, 3, 7, 14, and 30 days. Once a chapter is completed, it enters the queue. Reinforcing it pushes the next interval further out, hacking the forgetting curve.</p>
-                           </div>
-                           <div className="p-8 bg-slate-50 border border-slate-100 rounded-[32px] space-y-4">
-                              <h4 className="text-lg font-black text-slate-900 flex items-center gap-3"><Clock size={20} className="text-indigo-600" /> Pomodoro Velocity</h4>
-                              <p className="text-sm text-slate-500 leading-relaxed">Academic stamina is tracked through focused sessions. The Bento Analytics Grid visualizes your 7-day velocity and subject distribution, helping you identify cognitive bottlenecks early.</p>
-                           </div>
-                           <div className="p-8 bg-slate-50 border border-slate-100 rounded-[32px] space-y-4">
-                              <h4 className="text-lg font-black text-slate-900 flex items-center gap-3"><Target size={20} className="text-indigo-600" /> Milestone Tracking</h4>
-                              <p className="text-sm text-slate-500 leading-relaxed">Combine long-term exam results with daily habit goals. Zenith creates a holistic performance profile, correlating your study hours with actual grade outcomes for data-driven improvement.</p>
-                           </div>
-                        </div>
+                        <p className="text-lg text-slate-500 leading-relaxed font-medium">
+                          Zenith is more than a tracker; it's a high-fidelity laboratory for academic evolution. By leveraging Spaced Repetition (SRS) and Focus Momentum, it quantifies your cognitive growth.
+                        </p>
                       </section>
 
-                      <section className="bg-slate-900 rounded-[48px] p-12 text-white relative overflow-hidden">
-                        <div className="relative z-10 space-y-6">
-                          <h3 className="text-3xl font-black tracking-tighter">Security & The Vault Protocol</h3>
-                          <p className="text-indigo-200 text-lg font-medium leading-relaxed max-w-2xl">Zenith is built on a Local-First Architecture. Your academic data never leaves your browser unless you explicitly initiate the Vault Protocol.</p>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-6">
-                            <div className="space-y-2">
-                              <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-indigo-400 mb-4"><Lock size={20} /></div>
-                              <p className="font-bold">Zero Cloud Leak</p>
-                              <p className="text-xs text-indigo-300/60 leading-relaxed">Data is persisted in LocalStorage. No databases, no tracking, no surveillance.</p>
+                      <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                         <div className="p-10 bg-white border border-slate-100 rounded-[48px] space-y-6 shadow-sm group hover:border-indigo-200 transition-all">
+                            <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform"><Compass size={28} /></div>
+                            <h4 className="text-2xl font-black text-slate-900 tracking-tight">Syllabus Orchestration</h4>
+                            <p className="text-sm text-slate-500 leading-relaxed">
+                              Import the <strong>HSC Standard Preset</strong> or generate custom curricula. Zenith tracks completion at the chapter level to calculate your <strong>Global Mastery Score</strong>.
+                            </p>
+                            <ul className="space-y-3">
+                               {['Multi-Paper Support', 'AI Chapter Generation', 'Drag-and-Drop Prioritization'].map(i => (
+                                 <li key={i} className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-400"><ChevronRight size={14} className="text-indigo-500" /> {i}</li>
+                               ))}
+                            </ul>
+                         </div>
+
+                         <div className="p-10 bg-slate-900 text-white rounded-[48px] space-y-6 shadow-2xl relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-8 opacity-10 -z-0"><BrainCircuit size={100} /></div>
+                            <div className="w-14 h-14 bg-white/10 text-indigo-300 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform relative z-10"><History size={28} /></div>
+                            <h4 className="text-2xl font-black tracking-tight relative z-10">Revision Lab (SRS)</h4>
+                            <p className="text-sm text-indigo-100/70 leading-relaxed relative z-10">
+                              Based on the "Spacing Effect", Zenith schedules reviews at <strong>1, 3, 7, 14, and 30-day</strong> intervals. Reinforcing a topic resets its cycle to the next mastery level.
+                            </p>
+                            <div className="flex gap-2 relative z-10">
+                               {[1, 3, 7, 14, 30].map(d => <span key={d} className="px-2 py-1 bg-white/5 rounded-md text-[9px] font-bold text-indigo-400 border border-white/5">{d}D</span>)}
                             </div>
-                            <div className="space-y-2">
-                              <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-indigo-400 mb-4"><Download size={20} /></div>
-                              <p className="font-bold">Sync Out</p>
-                              <p className="text-xs text-indigo-300/60 leading-relaxed">Generates a cryptographically sound JSON snapshot of your entire study universe.</p>
+                         </div>
+
+                         <div className="p-10 bg-emerald-50 border border-emerald-100 rounded-[48px] space-y-6 shadow-sm group hover:border-emerald-300 transition-all">
+                            <div className="w-14 h-14 bg-white text-emerald-600 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform"><Clock size={28} /></div>
+                            <h4 className="text-2xl font-black text-slate-900 tracking-tight">Focus Momentum</h4>
+                            <p className="text-sm text-slate-600 leading-relaxed">
+                              The <strong>Integrated Pomodoro Studio</strong> logs every minute. Analytics in the Bento grid visualize your study velocity over a 7-day rolling window.
+                            </p>
+                            <div className="flex items-center gap-4">
+                               <div className="flex flex-col"><span className="text-xs font-black text-slate-900 uppercase">Focus</span><span className="text-[10px] text-slate-400 font-bold">25 Min</span></div>
+                               <div className="h-8 w-px bg-slate-200" />
+                               <div className="flex flex-col"><span className="text-xs font-black text-slate-900 uppercase">Rest</span><span className="text-[10px] text-slate-400 font-bold">5 Min</span></div>
                             </div>
-                            <div className="space-y-2">
-                              <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-indigo-400 mb-4"><Upload size={20} /></div>
-                              <p className="font-bold">Sync In</p>
-                              <p className="text-xs text-indigo-300/60 leading-relaxed">Seamlessly restores your academic trajectory on any device with 1:1 state parity.</p>
+                         </div>
+
+                         <div className="p-10 bg-indigo-50 border border-indigo-100 rounded-[48px] space-y-6 shadow-sm group hover:border-indigo-300 transition-all">
+                            <div className="w-14 h-14 bg-white text-indigo-600 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform"><Target size={28} /></div>
+                            <h4 className="text-2xl font-black text-slate-900 tracking-tight">Mastery Lab</h4>
+                            <p className="text-sm text-slate-600 leading-relaxed">
+                              Log exam results to receive <strong>Gemini-driven feedback</strong>. The Area Chart tracks percentage trends, identifying subjects that require immediate intervention.
+                            </p>
+                            <div className="flex items-center gap-2">
+                               <div className="h-1.5 w-1/2 bg-indigo-200 rounded-full" />
+                               <div className="h-1.5 w-1/4 bg-indigo-100 rounded-full" />
+                               <span className="text-[9px] font-black text-indigo-600">TRENDING UP</span>
                             </div>
-                          </div>
+                         </div>
+                      </section>
+
+                      <section className="bg-slate-50 border border-slate-100 rounded-[64px] p-12 space-y-12">
+                         <div className="text-center max-w-2xl mx-auto space-y-4">
+                            <h3 className="text-3xl font-black text-slate-900 tracking-tight">Technical Architecture</h3>
+                            <p className="text-sm text-slate-500 font-medium">Zenith utilizes a Local-First priority system to ensure your academic vault remains private and persistent.</p>
+                         </div>
+                         
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div className="space-y-4">
+                               <div className="p-3 bg-white rounded-2xl w-fit shadow-sm text-indigo-600"><ShieldCheck size={24} /></div>
+                               <h5 className="font-black text-slate-900 text-sm uppercase tracking-widest">Privacy First</h5>
+                               <p className="text-xs text-slate-500 leading-relaxed">Data never leaves your browser. No databases, no tracking, no cloud latency. Pure browser-level encryption.</p>
+                            </div>
+                            <div className="space-y-4">
+                               <div className="p-3 bg-white rounded-2xl w-fit shadow-sm text-indigo-600"><Cpu size={24} /></div>
+                               <h5 className="font-black text-slate-900 text-sm uppercase tracking-widest">IA Intelligence</h5>
+                               <p className="text-xs text-slate-500 leading-relaxed">Proprietary logic handles SRS scheduling and focus metrics calculation without relying on external servers.</p>
+                            </div>
+                            <div className="space-y-4">
+                               <div className="p-3 bg-white rounded-2xl w-fit shadow-sm text-indigo-600"><Activity size={24} /></div>
+                               <h5 className="font-black text-slate-900 text-sm uppercase tracking-widest">Peak Chapters</h5>
+                               <p className="text-xs text-slate-500 leading-relaxed">Chapters are tracked via unique UUIDs, allowing for 1:1 state restoration through the Vault Sync protocol.</p>
+                            </div>
+                         </div>
+                      </section>
+
+                      <section className="bg-indigo-600 rounded-[56px] p-12 text-white relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12 -z-0 scale-150"><Lock size={120} /></div>
+                        <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
+                           <div className="flex-1 space-y-6">
+                              <h3 className="text-4xl font-black tracking-tighter">The Vault Protocol</h3>
+                              <p className="text-indigo-100 text-lg font-medium leading-relaxed">
+                                Always use <strong>Sync Out</strong> before clearing browser cache. This generates a cryptographically sound JSON snapshot of your entire study universe, allowing for seamless restoration on any device.
+                              </p>
+                              <div className="flex gap-4">
+                                 <div className="px-6 py-3 bg-white/20 backdrop-blur-md rounded-2xl text-xs font-black uppercase tracking-widest border border-white/20">JSON V1.0 compliant</div>
+                                 <div className="px-6 py-3 bg-white/20 backdrop-blur-md rounded-2xl text-xs font-black uppercase tracking-widest border border-white/20">UUID Persistent</div>
+                              </div>
+                           </div>
+                           <div className="shrink-0 p-8 bg-white/10 rounded-[40px] backdrop-blur-xl border border-white/20">
+                              <Download size={64} className="text-indigo-100 animate-bounce" />
+                           </div>
                         </div>
                       </section>
                    </div>
                 </div>
+              ) : pickerTab === 'theme' ? (
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 py-4 min-h-0">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                      {THEMES.map((t) => (
+                        <button key={t.id} onClick={() => onUpdateTheme(t.id)} className={`flex flex-col text-left p-6 rounded-[32px] border-2 transition-all relative ${theme === t.id ? 'border-indigo-600 bg-indigo-50/50 shadow-xl' : 'border-theme bg-white hover:bg-slate-50'}`}>
+                          <div className={`w-12 h-12 rounded-2xl mb-4 shadow-inner ${t.color}`} />
+                          <h4 className="text-sm font-black text-theme uppercase tracking-tight">{t.label}</h4>
+                          <p className="text-[10px] font-bold text-theme-secondary mt-1">{t.desc}</p>
+                        </button>
+                      ))}
+                   </div>
+                </div>
               ) : pickerTab === 'about' ? (
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-6 pb-12">
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-6 pb-12 min-h-0">
                    <div className="max-w-4xl space-y-12 py-4">
                       <div className="space-y-6">
                         <h3 className="text-5xl font-black text-slate-900 tracking-tighter uppercase leading-none">Hasib <br /><span className="text-indigo-600">Chowdhury.</span></h3>
@@ -447,20 +519,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                       </div>
                    </div>
                 </div>
-              ) : pickerTab === 'theme' ? (
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 py-4">
-                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                      {THEMES.map((t) => (
-                        <button key={t.id} onClick={() => onUpdateTheme(t.id)} className={`flex flex-col text-left p-6 rounded-[32px] border-2 transition-all relative ${theme === t.id ? 'border-indigo-600 bg-indigo-50/50 shadow-xl' : 'border-theme bg-white hover:bg-slate-50'}`}>
-                          <div className={`w-12 h-12 rounded-2xl mb-4 shadow-inner ${t.color}`} />
-                          <h4 className="text-sm font-black text-theme uppercase tracking-tight">{t.label}</h4>
-                          <p className="text-[10px] font-bold text-theme-secondary mt-1">{t.desc}</p>
-                        </button>
-                      ))}
-                   </div>
-                </div>
               ) : (
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 py-4 space-y-10">
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 py-4 space-y-10 min-h-0">
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                       <div className="bg-slate-900 rounded-[48px] p-10 text-white relative overflow-hidden group">
                          <div className="relative z-10 flex flex-col h-full justify-between min-h-[300px]">
