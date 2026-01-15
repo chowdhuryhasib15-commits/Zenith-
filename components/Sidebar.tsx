@@ -8,7 +8,7 @@ import {
   Smile, Frown, Angry, Zap, Laugh, User as UserIcon, Loader2, Upload,
   Book, Info, ExternalLink, Mail, Github, Heart, Cloud,
   BookOpen, Timer, Target, Instagram, Facebook, Monitor, Download, Key, Shield,
-  RefreshCw, FileJson, History
+  RefreshCw, FileJson, History, AlertTriangle, Trash2, Power
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -63,7 +63,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   });
 
   const menuRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -125,6 +124,13 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
+  const factoryReset = () => {
+    if (window.confirm("FINAL WARNING: This will permanently DELETE all study data, subjects, goals, and history. There is no undo. Purge system?")) {
+      localStorage.clear();
+      window.location.reload();
+    }
+  };
+
   const getFullAvatarUrl = (seed: string, expressionId: string) => {
     const expr = EXPRESSIONS.find(e => e.id === expressionId) || EXPRESSIONS[0];
     return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}&${expr.params}`;
@@ -132,9 +138,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const SyncStatusBadge = ({ isMobile = false }) => {
     const lastSynced = state.lastSyncedAt ? new Date(state.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Never';
-    
     if (isMobile) return <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse" />;
-
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-slate-50/50 border-slate-100 text-slate-500 animate-in fade-in slide-in-from-left-2">
         <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
@@ -195,7 +199,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <Palette size={16} className="text-indigo-500" /> Identity Studio
                 </button>
                 <button onClick={() => { setIsPickerOpen(true); setPickerTab('sync'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
-                  <RefreshCw size={16} className="text-indigo-500" /> Sync Vault
+                  <RefreshCw size={16} className="text-indigo-500" /> Sync & Vault
                 </button>
                 <button onClick={() => { setIsPickerOpen(true); setPickerTab('theme'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
                   <Monitor size={16} className="text-indigo-500" /> Interface Theme
@@ -226,7 +230,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className="bg-card rounded-[48px] w-full max-w-6xl p-8 lg:p-12 shadow-2xl animate-in zoom-in-95 max-h-[95vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between mb-8 shrink-0">
                <div className="flex items-center gap-5">
-                 <div className="p-4 bg-indigo-600 text-white rounded-2xl animate-float">
+                 <div className={`p-4 rounded-2xl animate-float bg-indigo-600 text-white`}>
                    {pickerTab === 'sync' ? <RefreshCw size={24} /> : <Wand2 size={24} />}
                  </div>
                  <div>
@@ -242,7 +246,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex gap-4 mb-8 shrink-0 border-b border-theme pb-4 overflow-x-auto no-scrollbar pr-4">
                {[
                  { id: 'profile', label: 'Profile', icon: <UserIcon size={16} /> },
-                 { id: 'sync', label: 'Sync Vault', icon: <RefreshCw size={16} /> },
+                 { id: 'sync', label: 'Vault', icon: <RefreshCw size={16} /> },
                  { id: 'theme', label: 'Theme', icon: <Monitor size={16} /> },
                  { id: 'manual', label: 'Manual', icon: <Book size={16} /> }
                ].map(tab => (
@@ -276,7 +280,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               ) : pickerTab === 'sync' ? (
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 py-4 space-y-10">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      {/* Export */}
                       <div className="bg-slate-900 rounded-[48px] p-10 text-white relative overflow-hidden group">
                          <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/20 rounded-bl-[100px] -z-0 pointer-events-none group-hover:scale-125 transition-transform" />
                          <div className="relative z-10 flex flex-col h-full justify-between min-h-[300px]">
@@ -285,16 +290,16 @@ const Sidebar: React.FC<SidebarProps> = ({
                                   <Download size={32} className="text-indigo-400" />
                                </div>
                                <h3 className="text-3xl font-black tracking-tighter">Export Vault</h3>
-                               <p className="text-slate-400 font-medium mt-2 leading-relaxed">Save your entire Zenith state to a portable JSON file. This acts as a manual sync to secure your data externally.</p>
+                               <p className="text-slate-400 font-medium mt-2 leading-relaxed text-sm">Save your entire Zenith state to a portable JSON file for external backup.</p>
                             </div>
-                            
                             <button onClick={exportVault} disabled={isSyncing} className="w-full bg-white text-slate-900 py-6 rounded-[32px] font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-400 hover:text-white transition-all disabled:opacity-50 flex items-center justify-center gap-3">
                                {isSyncing ? <Loader2 size={20} className="animate-spin" /> : <Download size={16} />}
-                               {isSyncing ? 'Packaging Vault...' : 'Sync Out (Download)'}
+                               {isSyncing ? 'Packaging...' : 'Sync Out'}
                             </button>
                          </div>
                       </div>
 
+                      {/* Import */}
                       <div className="bg-slate-50 rounded-[48px] p-10 border border-slate-200 relative overflow-hidden group">
                          <div className="relative z-10 flex flex-col h-full justify-between min-h-[300px]">
                             <div>
@@ -302,17 +307,33 @@ const Sidebar: React.FC<SidebarProps> = ({
                                   <Upload size={32} className="text-indigo-600" />
                                </div>
                                <h3 className="text-3xl font-black tracking-tighter text-slate-900">Restore Vault</h3>
-                               <p className="text-slate-500 font-medium mt-2 leading-relaxed">Import a previously exported Zenith file to restore your academic progress on this device.</p>
+                               <p className="text-slate-500 font-medium mt-2 leading-relaxed text-sm">Import a previously exported Zenith file to restore your academic progress.</p>
                             </div>
-                            
                             <div>
                                <button onClick={() => importInputRef.current?.click()} className="w-full bg-slate-900 text-white py-6 rounded-[32px] font-black text-xs uppercase tracking-[0.3em] shadow-xl hover:bg-indigo-600 transition-all flex items-center justify-center gap-3">
                                   <Upload size={16} />
-                                  Sync In (Import)
+                                  Sync In
                                </button>
                                <input type="file" ref={importInputRef} className="hidden" accept=".json" onChange={handleImportVault} />
                             </div>
                          </div>
+                      </div>
+
+                      {/* Delete / Clear */}
+                      <div className="bg-rose-50 rounded-[48px] p-10 border border-rose-100 relative overflow-hidden group">
+                        <div className="relative z-10 flex flex-col h-full justify-between min-h-[300px]">
+                           <div>
+                              <div className="p-4 bg-rose-100 rounded-3xl w-fit mb-6 text-rose-600">
+                                 <Trash2 size={32} />
+                              </div>
+                              <h3 className="text-3xl font-black tracking-tighter text-rose-900">Delete Data</h3>
+                              <p className="text-rose-600/70 font-medium mt-2 leading-relaxed text-sm">Permanently wipe all local progress and reset your study laboratory.</p>
+                           </div>
+                           <button onClick={factoryReset} className="w-full bg-rose-600 text-white py-6 rounded-[32px] font-black text-xs uppercase tracking-[0.3em] shadow-xl shadow-rose-100 hover:bg-rose-700 transition-all flex items-center justify-center gap-3">
+                              <Power size={18} />
+                              Clear Everything
+                           </button>
+                        </div>
                       </div>
                    </div>
                 </div>
@@ -330,7 +351,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                    </div>
                 </div>
               ) : (
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-8 py-4 animate-in fade-in slide-in-from-bottom-4">
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-8 py-4">
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="p-8 bg-slate-50 rounded-[32px] border border-theme space-y-4">
                          <h4 className="text-lg font-black text-theme flex items-center gap-3"><FileJson size={20} className="text-indigo-600" /> Vault Sync</h4>
