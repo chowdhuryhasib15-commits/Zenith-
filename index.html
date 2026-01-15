@@ -155,7 +155,9 @@
     "@google/genai": "https://esm.sh/@google/genai@^1.36.0",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "recharts": "https://esm.sh/recharts@^3.6.0",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "vite": "https://esm.sh/vite@^7.3.1"
   }
 }
 </script>
@@ -164,6 +166,9 @@
     <div id="custom-cursor"></div>
     <div id="custom-cursor-follower"></div>
     <div id="root"></div>
+
+    <!-- Explicitly import index.tsx for Vercel/Vite build -->
+    <script type="module" src="/index.tsx"></script>
 
     <script>
         const cursor = document.getElementById('custom-cursor');
