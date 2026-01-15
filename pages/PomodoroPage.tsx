@@ -3,10 +3,10 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Subject, PomodoroLog, AppState } from '../types';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
-  Cell, PieChart, Pie, CartesianGrid
+  CartesianGrid
 } from 'recharts';
 import { 
-  History, BarChart2, Play, Pause, X, 
+  Play, Pause, X, 
   Settings2, CheckCircle2, Flame, Trophy, Clock, Trash2, 
   Download, Upload, RefreshCw, Lock, ChevronDown, Volume2, VolumeX
 } from 'lucide-react';
@@ -35,6 +35,22 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Filter subjects to remove "Papers" and deduplicate for a cleaner UI
+  const pomodoroSubjects = useMemo(() => {
+    const seen = new Set<string>();
+    const result: Subject[] = [];
+    
+    subjects.forEach(s => {
+      // Strip "1st Paper", "2nd Paper", "Paper" etc.
+      const baseName = s.name.replace(/\s*(1st|2nd)?\s*Paper/gi, '').trim();
+      if (!seen.has(baseName)) {
+        seen.add(baseName);
+        result.push({ ...s, name: baseName });
+      }
+    });
+    return result;
+  }, [subjects]);
 
   const totalSeconds = (mode === 'focus' ? focusDuration : breakDuration) * 60;
   const currentSeconds = minutes * 60 + seconds;
@@ -67,14 +83,12 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
       
       osc.type = 'sine';
       if (type === 'complete') {
-        // High-end completion chime
         osc.frequency.setValueAtTime(880, ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.2);
         gain.gain.setValueAtTime(0, ctx.currentTime);
         gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.05);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
       } else {
-        // Subtle transition blip
         osc.frequency.setValueAtTime(440, ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.1);
         gain.gain.setValueAtTime(0, ctx.currentTime);
@@ -142,7 +156,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     }
   };
 
-  // Add missing export handler to secure data backup
   const handleExportData = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullState));
     const downloadAnchorNode = document.createElement('a');
@@ -153,7 +166,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     downloadAnchorNode.remove();
   };
 
-  // Add missing import handler to restore study progress from JSON
   const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -172,7 +184,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     reader.readAsText(file);
   };
 
-  // Add missing clear data handler to reset the application state
   const handleClearAllData = () => {
     if (window.confirm("FINAL WARNING: This will permanently DELETE all study data. Purge system?")) {
       localStorage.clear();
@@ -227,24 +238,13 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     });
   }, [logs]);
 
-  const subjectDistribution = useMemo(() => {
-    const map: Record<string, { value: number, color: string, name: string }> = {};
-    logs.forEach(log => {
-      const sub = subjects.find(s => s.id === log.subjectId);
-      const name = sub?.name || 'Unmapped Flow';
-      const color = sub?.color || '#cbd5e1';
-      if (!map[name]) map[name] = { value: 0, color, name };
-      map[name].value += log.duration;
-    });
-    return Object.values(map);
-  }, [logs, subjects]);
-
   const radius = 130;
   const strokeWidth = 14;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   const currentSubject = subjects.find(s => s.id === selectedSub);
+  const currentDisplaySubject = pomodoroSubjects.find(s => s.id === selectedSub);
 
   return (
     <div className={`min-h-[85vh] flex flex-col transition-all duration-1000 ${isActive ? 'items-center justify-center' : 'space-y-12'}`}>
@@ -263,7 +263,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
               >
                 <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: currentSubject?.color || (hasTriedToStart ? '#f43f5e' : 'var(--text-secondary)') }} />
                 <span className={`truncate ${!selectedSub ? 'text-theme-secondary opacity-50' : 'text-theme'}`}>
-                  {currentSubject?.name || 'Select Subject'}
+                  {currentDisplaySubject?.name || 'Select Subject'}
                 </span>
                 <ChevronDown size={16} className={`text-theme-secondary transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -271,12 +271,12 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
               {isDropdownOpen && (
                 <div className="absolute top-[calc(100%+12px)] left-0 right-0 glass rounded-[32px] border border-theme shadow-2xl p-2 z-[100] animate-in slide-in-from-top-4 fade-in duration-200 overflow-hidden">
                   <div className="max-h-64 overflow-y-auto custom-scrollbar pr-1">
-                    {subjects.length === 0 ? (
+                    {pomodoroSubjects.length === 0 ? (
                       <div className="p-4 text-center text-xs font-bold text-theme-secondary uppercase tracking-widest italic opacity-50">
                         No subjects found
                       </div>
                     ) : (
-                      subjects.map(s => (
+                      pomodoroSubjects.map(s => (
                         <button
                           key={s.id}
                           onClick={() => {
@@ -320,9 +320,9 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
           </svg>
 
           <div className="flex flex-col items-center justify-center text-center pointer-events-none z-10">
-            {isActive && currentSubject && (
+            {isActive && currentDisplaySubject && (
               <span className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400 mb-4">
-                {currentSubject.name}
+                {currentDisplaySubject.name}
               </span>
             )}
             <div className={`text-[84px] font-black tracking-tighter tabular-nums leading-none transition-colors ${!selectedSub && !isActive ? 'text-slate-200' : 'text-slate-900'}`}>
@@ -371,7 +371,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in slide-in-from-bottom-12 duration-1000 max-w-7xl mx-auto w-full px-4">
           <div className="lg:col-span-8 bg-white p-8 rounded-[48px] border border-slate-100 shadow-sm flex flex-col h-[300px]">
             <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl"><BarChart2 size={20} /></div>
+              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl"><Clock size={20} /></div>
               <div>
                 <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Focus Momentum</h3>
                 <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">7 Day Velocity</p>
