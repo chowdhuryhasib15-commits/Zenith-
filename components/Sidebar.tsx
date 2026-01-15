@@ -5,8 +5,8 @@ import { User, AppTheme } from '../types';
 import { GoogleGenAI } from "@google/genai";
 import { 
   Menu, X, LogOut, ChevronUp, 
-  Palette, Check, Sparkles, Wand2, Dice5,
-  Smile, Frown, Angry, Zap, Laugh, User as UserIcon, GraduationCap, Loader2, Upload,
+  Palette, Check, Sparkles, Wand2, 
+  Smile, Frown, Angry, Zap, Laugh, User as UserIcon, Loader2, Upload,
   Book, Info, ExternalLink, Mail, Github, Heart,
   BookOpen, Timer, Target, Instagram, Facebook, Monitor
 } from 'lucide-react';
@@ -148,6 +148,15 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
+  const handleSignOut = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to sign out? Your session data will be preserved locally.")) {
+      setIsMenuOpen(false);
+      onLogout();
+    }
+  };
+
   return (
     <>
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-card backdrop-blur-md border-b border-theme flex items-center px-4 justify-between z-50">
@@ -190,24 +199,24 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className="relative pt-6 border-t border-theme shrink-0" ref={menuRef}>
             {isMenuOpen && (
               <div className="absolute bottom-full left-0 w-full mb-4 bg-card rounded-3xl shadow-2xl border border-theme p-2 animate-in slide-in-from-bottom-4 z-[60]">
-                <button onClick={() => { setIsPickerOpen(true); setPickerTab('profile'); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
+                <button onClick={() => { setIsPickerOpen(true); setPickerTab('profile'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
                   <Palette size={16} className="text-indigo-500" />
                   Identity Studio
                 </button>
-                <button onClick={() => { setIsPickerOpen(true); setPickerTab('theme'); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
+                <button onClick={() => { setIsPickerOpen(true); setPickerTab('theme'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
                   <Monitor size={16} className="text-indigo-500" />
                   Interface Theme
                 </button>
-                <button onClick={() => { setIsPickerOpen(true); setPickerTab('manual'); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
+                <button onClick={() => { setIsPickerOpen(true); setPickerTab('manual'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
                   <Book size={16} className="text-indigo-500" />
                   How to Use
                 </button>
-                <button onClick={() => { setIsPickerOpen(true); setPickerTab('about'); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
+                <button onClick={() => { setIsPickerOpen(true); setPickerTab('about'); setIsMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-indigo-50 text-theme-secondary font-bold text-xs transition-all">
                   <Info size={16} className="text-indigo-500" />
                   About Author
                 </button>
                 <div className="h-px bg-slate-50 my-2 mx-2" />
-                <button onClick={() => { if(window.confirm("Log out?")) onLogout(); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-rose-50 text-rose-500 font-bold text-xs transition-all">
+                <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-rose-50 text-rose-500 font-bold text-xs transition-all">
                   <LogOut size={16} />
                   Sign Out
                 </button>

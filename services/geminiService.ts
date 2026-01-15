@@ -5,7 +5,24 @@ import { AppState, ExamResult, Subject } from "../types";
 // Correctly initialize GoogleGenAI with named parameter and direct process.env.API_KEY usage
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+const cleanJson = (text: string) => {
+  // Remove markdown code blocks if present
+  return text.replace(/```json/g, '').replace(/```/g, '').trim();
+};
+
 export const getStudyInsights = async (state: AppState): Promise<string[]> => {
+  // Basic fallback insights
+  const fallbacks = [
+    "Stay consistent with your Pomodoro sessions!",
+    "Remember to revise chapters within 7 days of completion.",
+    "Focus on subjects where your marks are currently lower."
+  ];
+
+  if (!process.env.API_KEY || process.env.API_KEY === "undefined") {
+    console.warn("Gemini API Key is missing. Using fallback insights.");
+    return fallbacks;
+  }
+
   try {
     const prompt = `
       Analyze this student's data and provide brief, actionable study insights. 
@@ -35,19 +52,28 @@ export const getStudyInsights = async (state: AppState): Promise<string[]> => {
       }
     });
 
-    const text = response.text || '{"insights": []}';
-    const json = JSON.parse(text) as { insights: string[] };
-    return json.insights;
+    const text = response.text;
+    if (!text) throw new Error("Empty response from Gemini");
+    
+    const json = JSON.parse(cleanJson(text)) as { insights: string[] };
+    return json.insights?.length ? json.insights : fallbacks;
   } catch (error) {
     console.error("Gemini Insight Error:", error);
-    return ["Stay consistent with your Pomodoro sessions!", "Remember to revise chapters within 7 days of completion.", "Focus on subjects where your marks are currently lower."];
+    return fallbacks;
   }
 };
 
 export const getResultPerformanceAnalysis = async (results: ExamResult[], subjects: Subject[]): Promise<string[]> => {
-  try {
-    if (results.length === 0) return ["Start logging your exam results to get personalized performance analysis."];
+  const fallbacks = [
+    "Review subjects where your score is below 60%.",
+    "Look for patterns in the types of exams where you struggle.",
+    "Consistency is key to academic success!"
+  ];
 
+  if (results.length === 0) return ["Start logging your exam results to get personalized performance analysis."];
+  if (!process.env.API_KEY || process.env.API_KEY === "undefined") return fallbacks;
+
+  try {
     const resultsSummary = results.map(r => ({
       subject: subjects.find(s => s.id === r.subjectId)?.name || 'Unknown',
       type: r.type,
@@ -58,9 +84,7 @@ export const getResultPerformanceAnalysis = async (results: ExamResult[], subjec
 
     const prompt = `
       As an expert academic advisor, analyze these exam results: ${JSON.stringify(resultsSummary)}.
-      Identify performance trends (improvement, consistency, or decline).
-      Provide 3 specific, personalized tips to improve or maintain scores.
-      Focus on subjects with the lowest percentages or declining trends.
+      Identify performance trends. Provide 3 specific tips.
       Output exactly 3 observations/tips in JSON format: {"analysis": ["...", "...", "..."]}
     `;
 
@@ -82,16 +106,22 @@ export const getResultPerformanceAnalysis = async (results: ExamResult[], subjec
       }
     });
 
-    const text = response.text || '{"analysis": []}';
-    const json = JSON.parse(text) as { analysis: string[] };
-    return json.analysis;
+    const text = response.text;
+    if (!text) throw new Error("Empty response");
+
+    const json = JSON.parse(cleanJson(text)) as { analysis: string[] };
+    return json.analysis?.length ? json.analysis : fallbacks;
   } catch (error) {
     console.error("Gemini Result Analysis Error:", error);
-    return ["Review subjects where your score is below 60%.", "Look for patterns in the types of exams where you struggle (e.g., Quizzes vs Finals).", "Consistency is key to academic success!"];
+    return fallbacks;
   }
 };
 
 export const generateSubjectChapters = async (subjectName: string): Promise<string[]> => {
+  const fallbacks = ["Introduction", "Core Concepts", "Advanced Application", "Review"];
+  
+  if (!process.env.API_KEY || process.env.API_KEY === "undefined") return fallbacks;
+
   try {
     const prompt = `Provide a list of 5-8 common core chapters/topics for the subject: ${subjectName}. Keep it brief.`;
     const response = await ai.models.generateContent({
@@ -111,10 +141,13 @@ export const generateSubjectChapters = async (subjectName: string): Promise<stri
         }
       }
     });
-    const text = response.text || '{"chapters": []}';
-    const json = JSON.parse(text) as { chapters: string[] };
-    return json.chapters;
+    const text = response.text;
+    if (!text) throw new Error("Empty response");
+
+    const json = JSON.parse(cleanJson(text)) as { chapters: string[] };
+    return json.chapters?.length ? json.chapters : fallbacks;
   } catch (error) {
-    return ["Introduction", "Core Concepts", "Advanced Application", "Review"];
+    console.error("Gemini Chapter Gen Error:", error);
+    return fallbacks;
   }
 };

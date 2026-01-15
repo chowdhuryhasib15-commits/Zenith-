@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AppState, Subject, Goal, ExamResult, PomodoroLog, User, Course, AppTheme } from './types';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -34,18 +34,23 @@ const App: React.FC = () => {
     // Apply theme to body
     const body = document.body;
     body.className = body.className.replace(/theme-\w+/, '').trim();
-    if (state.theme !== 'light') {
+    if (state.theme && state.theme !== 'light') {
       body.classList.add(`theme-${state.theme}`);
     }
   }, [state]);
 
-  const handleLogin = (user: User) => {
+  const handleLogin = useCallback((user: User) => {
     setState(prev => ({ ...prev, user }));
-  };
+  }, []);
 
-  const handleLogout = () => {
-    setState(prev => ({ ...prev, user: undefined }));
-  };
+  const handleLogout = useCallback(() => {
+    setState(prev => {
+      const newState = { ...prev };
+      delete newState.user;
+      return newState;
+    });
+    setActiveTab('dashboard');
+  }, []);
 
   const updateUser = (updatedUser: User) => {
     setState(prev => ({ ...prev, user: updatedUser }));
@@ -76,7 +81,12 @@ const App: React.FC = () => {
   const deleteGoal = (id: string) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }));
   const addResult = (result: ExamResult) => setState(prev => ({ ...prev, results: [...prev.results, result] }));
   const deleteResult = (id: string) => setState(prev => ({ ...prev, results: prev.results.filter(r => r.id !== id) }));
-  const logPomodoro = (log: PomodoroLog) => setState(prev => ({ ...prev, pomodoroLogs: [...prev.pomodoroLogs, log] }));
+  
+  const logPomodoro = (log: PomodoroLog) => setState(prev => ({ 
+    ...prev, 
+    pomodoroLogs: [...prev.pomodoroLogs, log] 
+  }));
+
   const setSyllabusDeadline = (date: string) => setState(prev => ({ ...prev, syllabusDeadline: date }));
   
   const addCourse = (course: Course) => setState(prev => ({ ...prev, courses: [...prev.courses, course] }));
@@ -100,7 +110,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`flex min-h-screen overflow-hidden transition-colors duration-300`}>
+    <div className="flex min-h-screen overflow-hidden transition-colors duration-300">
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
