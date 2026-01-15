@@ -11,6 +11,16 @@ interface DashboardProps {
   onUpdateDeadline: (date: string) => void;
 }
 
+const ZenithIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <div className={`relative ${className} flex items-center justify-center`}>
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]">
+      <path d="M12 3L4 19H20L12 3Z" className="fill-white/20 stroke-white" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M12 3L8 19H16L12 3Z" className="fill-white/40 stroke-white" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M12 1L13.5 4.5L17 6L13.5 7.5L12 11L10.5 7.5L7 6L10.5 4.5L12 1Z" fill="white" />
+    </svg>
+  </div>
+);
+
 const REVISION_INTERVALS = [1, 3, 7, 14, 30];
 
 const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadline }) => {
@@ -101,8 +111,8 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
       {/* Detail Achievement Header */}
       <div className="flex items-center justify-between px-6 py-4 bg-white/40 backdrop-blur-md rounded-[32px] border border-slate-100 shadow-sm mb-4">
          <div className="flex items-center gap-4">
-            <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg">
-               <Target size={20} />
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-xl flex items-center justify-center text-white shadow-lg">
+               <ZenithIcon className="w-6 h-6" />
             </div>
             <div>
                <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest">Global Progress</h2>

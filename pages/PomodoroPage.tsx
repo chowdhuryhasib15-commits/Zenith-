@@ -8,7 +8,7 @@ import {
 import { 
   History, BarChart2, Play, Pause, X, 
   Settings2, CheckCircle2, Flame, Trophy, Clock, Trash2, 
-  Download, Upload, RefreshCw, Lock, ChevronDown
+  Download, Upload, RefreshCw, Lock, ChevronDown, Volume2, VolumeX
 } from 'lucide-react';
 
 interface PomodoroPageProps {
@@ -40,7 +40,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   const currentSeconds = minutes * 60 + seconds;
   const progress = ((totalSeconds - currentSeconds) / totalSeconds) * 100;
 
-  // Handle click outside for custom dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -58,21 +57,35 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     }
   }, [focusDuration, breakDuration, mode, isActive]);
 
-  const playSound = (type: 'success' | 'transition') => {
+  const playSound = (type: 'complete' | 'transition') => {
     if (isMuted) return;
     try {
-      const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       const ctx = new AudioContext();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
+      
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(type === 'success' ? 880 : 440, ctx.currentTime);
-      gain.gain.setValueAtTime(0.05, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      if (type === 'complete') {
+        // High-end completion chime
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      } else {
+        // Subtle transition blip
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      }
+      
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
-      osc.stop(ctx.currentTime + 0.3);
+      osc.stop(ctx.currentTime + 0.6);
     } catch (e) { console.warn("Audio blocked", e); }
   };
 
@@ -83,9 +96,13 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
       return;
     }
     setIsActive(true);
+    playSound('transition');
   };
 
-  const pauseTimer = () => setIsActive(false);
+  const pauseTimer = () => {
+    setIsActive(false);
+    playSound('transition');
+  };
 
   const cancelSession = () => {
     if (window.confirm("Abort this focus session? Progress will not be saved.")) {
@@ -118,23 +135,25 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
         duration: elapsedMinutes,
         timestamp: new Date().toISOString()
       });
-      playSound('success');
+      playSound('complete');
       handleModeChange('break');
     } else {
       handleModeChange('focus');
     }
   };
 
+  // Add missing export handler to secure data backup
   const handleExportData = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullState));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `zenith_vault_${new Date().toISOString().split('T')[0]}.json`);
+    downloadAnchorNode.setAttribute("download", `zenith_vault_pomodoro_${new Date().toISOString().split('T')[0]}.json`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
   };
 
+  // Add missing import handler to restore study progress from JSON
   const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -142,20 +161,20 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     reader.onload = (event) => {
       try {
         const importedData = JSON.parse(event.target?.result as string);
-        if (window.confirm("CRITICAL: This will overwrite your current local data. Proceed with restoration?")) {
+        if (window.confirm("CRITICAL: This will overwrite current data. Continue?")) {
           onRestore(importedData);
-          setShowSettings(false);
-          alert("Zenith System successfully restored from backup.");
+          alert("Vault restored successfully.");
         }
       } catch (error) {
-        alert("System Error: The provided file is not a valid Zenith backup.");
+        alert("Invalid vault file.");
       }
     };
     reader.readAsText(file);
   };
 
+  // Add missing clear data handler to reset the application state
   const handleClearAllData = () => {
-    if (window.confirm("EXTREME ACTION: This will permanently purge ALL study data. This cannot be undone. Continue?")) {
+    if (window.confirm("FINAL WARNING: This will permanently DELETE all study data. Purge system?")) {
       localStorage.clear();
       window.location.reload();
     }
@@ -171,7 +190,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
           setSeconds(59);
         } else {
           pauseTimer();
-          playSound('success');
+          playSound('complete');
           if (mode === 'focus') {
             onComplete({ id: Date.now().toString(), subjectId: selectedSub, duration: focusDuration, timestamp: new Date().toISOString() });
             handleModeChange('break');
@@ -230,7 +249,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   return (
     <div className={`min-h-[85vh] flex flex-col transition-all duration-1000 ${isActive ? 'items-center justify-center' : 'space-y-12'}`}>
       
-      {/* Centered Immersion Timer Section */}
       <section className={`flex flex-col items-center justify-center transition-all duration-1000 ${isActive ? 'scale-110 flex-1' : ''}`}>
         {!isActive && (
           <div className={`mb-12 w-full max-w-sm animate-in fade-in slide-in-from-top-6 transition-all duration-500 ${hasTriedToStart ? 'scale-105' : ''}`}>
@@ -238,7 +256,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
               {hasTriedToStart ? 'Domain Selection Required' : 'Current Domain'}
             </label>
             
-            {/* Custom Zenith Dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button 
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -304,7 +321,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
 
           <div className="flex flex-col items-center justify-center text-center pointer-events-none z-10">
             {isActive && currentSubject && (
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400 mb-4 animate-in fade-in slide-in-from-bottom-2 duration-1000">
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400 mb-4">
                 {currentSubject.name}
               </span>
             )}
@@ -330,7 +347,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
           ) : (
             <>
               <button onClick={pauseTimer} className="w-20 h-20 rounded-[28px] bg-slate-900 text-white flex items-center justify-center shadow-xl hover:bg-indigo-600 active:scale-90 transition-all group">
-                <Pause size={32} fill="currentColor" className="group-hover:scale-110 transition-transform" />
+                <Pause size={32} fill="currentColor" />
               </button>
               <button onClick={cancelSession} className="w-20 h-20 rounded-[28px] bg-white text-rose-500 border-2 border-rose-50 flex items-center justify-center shadow-sm hover:bg-rose-50 active:scale-90 transition-all">
                 <X size={32} />
@@ -339,21 +356,19 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
           )}
           {isActive && (
             <button onClick={handleFinishEarly} className="p-5 text-emerald-600 hover:bg-emerald-50 rounded-[24px] transition-all group">
-              <CheckCircle2 size={28} className="group-hover:scale-110 transition-transform" />
+              <CheckCircle2 size={28} />
             </button>
           )}
           {!isActive && (
              <button onClick={() => setShowSettings(true)} className="p-6 text-slate-400 hover:text-indigo-600 transition-all hover:bg-indigo-50 rounded-[24px] group">
-                <Settings2 size={28} className="group-hover:rotate-90 transition-transform" />
+                <Settings2 size={28} />
              </button>
           )}
         </div>
       </section>
 
-      {/* Analytics Bento Grid */}
       {!isActive && (
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in slide-in-from-bottom-12 duration-1000 max-w-7xl mx-auto w-full px-4">
-          
           <div className="lg:col-span-8 bg-white p-8 rounded-[48px] border border-slate-100 shadow-sm flex flex-col h-[300px]">
             <div className="flex items-center gap-4 mb-6">
               <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl"><BarChart2 size={20} /></div>
@@ -380,7 +395,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
 
           <div className="lg:col-span-4 grid grid-cols-2 lg:grid-cols-1 gap-6">
             <div className="bg-slate-900 text-white p-7 rounded-[40px] flex items-center gap-5 shadow-2xl relative overflow-hidden group h-full">
-              <div className="absolute top-0 right-0 p-4 opacity-10 -z-0 group-hover:scale-125 transition-transform"><Flame size={60} /></div>
               <Flame className="text-orange-500 relative z-10" size={24} />
               <div className="relative z-10">
                 <p className="text-3xl font-black tabular-nums leading-none">{streakCount}</p>
@@ -388,64 +402,10 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
               </div>
             </div>
             <div className="bg-indigo-600 text-white p-7 rounded-[40px] flex items-center gap-5 shadow-xl relative overflow-hidden group h-full">
-              <div className="absolute top-0 right-0 p-4 opacity-10 -z-0 group-hover:scale-125 transition-transform"><Trophy size={60} /></div>
               <Trophy className="text-indigo-200 relative z-10" size={24} />
               <div className="relative z-10">
                 <p className="text-3xl font-black tabular-nums leading-none">{Math.round(totalFocusMinutes / 60)}h</p>
                 <p className="text-[8px] font-black text-indigo-300 uppercase tracking-widest mt-1">Total Focus</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-7 bg-white p-8 rounded-[48px] border border-slate-100 shadow-sm flex flex-col h-[300px]">
-             <div className="flex items-center gap-4 mb-6">
-                <div className="p-3 bg-slate-100 text-slate-400 rounded-2xl"><History size={20} /></div>
-                <div>
-                  <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Temporal Records</h3>
-                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Archive</p>
-                </div>
-             </div>
-             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2">
-                {logs.length > 0 ? logs.slice(-8).reverse().map((log) => {
-                  const sub = subjects.find(s => s.id === log.subjectId);
-                  return (
-                    <div key={log.id} className="flex items-center justify-between p-4 bg-slate-50/50 rounded-[28px] border border-transparent hover:border-slate-100 transition-all group">
-                      <div className="flex items-center gap-4">
-                        <div className="w-1.5 h-8 rounded-full" style={{ backgroundColor: sub?.color || '#cbd5e1' }} />
-                        <div>
-                          <p className="text-[10px] font-black text-slate-800 uppercase tracking-widest truncate max-w-[120px]">{sub?.name || 'Isolated Flow'}</p>
-                          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.1em]">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                        </div>
-                      </div>
-                      <span className="text-xs font-black text-slate-900">{log.duration}<span className="text-[8px] ml-0.5">m</span></span>
-                    </div>
-                  );
-                }) : (
-                  <div className="h-full flex items-center justify-center opacity-20">
-                    <p className="text-[8px] font-bold uppercase tracking-widest">Empty</p>
-                  </div>
-                )}
-             </div>
-          </div>
-
-          <div className="lg:col-span-5 bg-white p-8 rounded-[48px] border border-slate-100 shadow-sm flex flex-col items-center h-[300px]">
-            <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-4 self-start">Distribution</h3>
-            <div className="flex-1 w-full flex flex-col items-center justify-center">
-              <ResponsiveContainer width="100%" height={140}>
-                <PieChart>
-                  <Pie data={subjectDistribution} innerRadius={45} outerRadius={60} paddingAngle={8} dataKey="value">
-                    {subjectDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 w-full px-2 overflow-hidden">
-                {subjectDistribution.slice(0, 4).map((sub, i) => (
-                  <div key={i} className="flex items-center gap-2 truncate">
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: sub.color }} />
-                    <span className="text-[9px] font-black text-slate-500 truncate uppercase tracking-tighter">{sub.name}</span>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
@@ -455,17 +415,25 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
       {showSettings && (
         <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-[20px] z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-white rounded-[64px] w-full max-w-5xl p-12 lg:p-16 shadow-2xl relative animate-in zoom-in-95 overflow-hidden">
-             <div className="absolute top-0 right-0 p-12 opacity-[0.03] -z-0"><Settings2 size={240} /></div>
              <div className="flex items-center justify-between mb-16 relative z-10">
                 <div>
                   <h3 className="text-5xl font-black tracking-tighter text-slate-900">System Tuning</h3>
-                  <p className="text-slate-400 text-xs font-black uppercase tracking-[0.4em] mt-2">Zenith Engine Configuration & Data Vault</p>
+                  <p className="text-slate-400 text-xs font-black uppercase tracking-[0.4em] mt-2">Zenith Engine Configuration</p>
                 </div>
                 <button onClick={() => setShowSettings(false)} className="p-4 hover:bg-slate-100 rounded-[28px] transition-transform active:scale-90"><X size={32} /></button>
              </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-16 relative z-10">
                 <div className="space-y-10">
-                  <h4 className="text-[11px] font-black text-indigo-500 uppercase tracking-[0.3em] flex items-center gap-3"><Clock size={16} /> Phase Cycles</h4>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-[11px] font-black text-indigo-500 uppercase tracking-[0.3em] flex items-center gap-3"><Clock size={16} /> Phase Cycles</h4>
+                    <button 
+                      onClick={() => setIsMuted(!isMuted)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isMuted ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-600'}`}
+                    >
+                      {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                      {isMuted ? 'Muted' : 'Audio On'}
+                    </button>
+                  </div>
                   <div className="space-y-8">
                     <div className="space-y-4">
                       <div className="flex justify-between items-center ml-1">
@@ -483,7 +451,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                     </div>
                   </div>
                   <button onClick={() => setShowSettings(false)} className="w-full bg-slate-900 text-white py-7 rounded-[32px] font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-600 transition-all active:scale-95 flex items-center justify-center gap-3">
-                    <RefreshCw size={16} /> Update Engine Params
+                    <RefreshCw size={16} /> Update Params
                   </button>
                 </div>
                 <div className="bg-slate-50/80 border border-slate-100 rounded-[48px] p-10 space-y-8">
@@ -491,14 +459,14 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                   <div className="grid grid-cols-1 gap-5">
                     <button onClick={handleExportData} className="flex items-center justify-between p-7 bg-white border-2 border-transparent hover:border-indigo-100 rounded-[32px] transition-all group shadow-sm">
                       <div className="flex items-center gap-5">
-                        <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl group-hover:scale-110 transition-transform"><Download size={24} /></div>
-                        <div className="text-left"><p className="text-sm font-black text-slate-900">Secure Backup</p><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Export Vault to JSON</p></div>
+                        <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><Download size={24} /></div>
+                        <div className="text-left"><p className="text-sm font-black text-slate-900">Secure Backup</p><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Export Vault</p></div>
                       </div>
                     </button>
                     <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-between p-7 bg-white border-2 border-transparent hover:border-emerald-100 rounded-[32px] transition-all group shadow-sm">
                       <div className="flex items-center gap-5">
-                        <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:scale-110 transition-transform"><Upload size={24} /></div>
-                        <div className="text-left"><p className="text-sm font-black text-slate-900">Restore Vault</p><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Import External JSON</p></div>
+                        <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl"><Upload size={24} /></div>
+                        <div className="text-left"><p className="text-sm font-black text-slate-900">Restore Vault</p><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Import JSON</p></div>
                       </div>
                       <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleImportData} />
                     </button>

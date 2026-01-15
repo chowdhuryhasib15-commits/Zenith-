@@ -3,12 +3,24 @@ import React, { useState } from 'react';
 import { User } from '../types';
 import { 
   Sparkles, ShieldCheck, Globe, 
-  ArrowRight, Fingerprint, Loader2, Key
+  ArrowRight, Fingerprint, Loader2, Key,
+  Mountain
 } from 'lucide-react';
 
 interface AuthOverlayProps {
   onLogin: (user: User) => void;
 }
+
+const ZenithIcon = ({ className = "w-24 h-24" }: { className?: string }) => (
+  <div className={`relative ${className} flex items-center justify-center`}>
+    <div className="absolute inset-0 bg-indigo-400/20 blur-[20px] rounded-full scale-125 animate-pulse" />
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="relative z-10 w-full h-full drop-shadow-[0_0_15px_rgba(129,140,248,0.8)]">
+      <path d="M12 3L4 19H20L12 3Z" className="fill-indigo-500/20 stroke-indigo-400" strokeWidth="1" strokeLinejoin="round" />
+      <path d="M12 3L8 19H16L12 3Z" className="fill-indigo-500/40 stroke-indigo-300" strokeWidth="1" strokeLinejoin="round" />
+      <path d="M12 1L13.5 4.5L17 6L13.5 7.5L12 11L10.5 7.5L7 6L10.5 4.5L12 1Z" fill="white" className="animate-pulse" />
+    </svg>
+  </div>
+);
 
 const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin }) => {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -43,8 +55,8 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ onLogin }) => {
         
         {/* Brand/Marketing Side */}
         <div className="hidden lg:flex flex-col flex-1 text-left space-y-8 max-w-lg">
-          <div className="w-16 h-16 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl flex items-center justify-center shadow-2xl">
-            <Sparkles className="text-indigo-400" size={32} />
+          <div className="w-20 h-20 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[28px] flex items-center justify-center shadow-[0_0_50px_-12px_rgba(99,102,241,0.5)]">
+            <ZenithIcon className="w-12 h-12" />
           </div>
           <div>
             <h1 className="text-7xl font-black text-white tracking-tighter leading-[0.9] uppercase">
