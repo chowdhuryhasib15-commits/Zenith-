@@ -1,0 +1,7 @@
+{
+  "name": "ZENITH - Premier Study Tracker",
+  "description": "A comprehensive study management dashboard featuring subject progress tracking, smart revision reminders, Pomodoro timer with analytics, calendar goals, and exam result monitoring with AI-driven insights.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

@@ -1,0 +1,208 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZENITH - Reach Your Peak</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --accent-color: #6366f1;
+        }
+
+        .theme-dark {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --accent-color: #818cf8;
+        }
+
+        .theme-obsidian {
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0a;
+            --text-primary: #ffffff;
+            --text-secondary: #a3a3a3;
+            --border-color: #171717;
+            --accent-color: #ffffff;
+        }
+
+        .theme-rose {
+            --bg-primary: #fff1f2;
+            --bg-secondary: #ffffff;
+            --text-primary: #881337;
+            --text-secondary: #fb7185;
+            --border-color: #fecdd3;
+            --accent-color: #e11d48;
+        }
+
+        .theme-ocean {
+            --bg-primary: #f0f9ff;
+            --bg-secondary: #ffffff;
+            --text-primary: #0c4a6e;
+            --text-secondary: #0ea5e9;
+            --border-color: #bae6fd;
+            --accent-color: #0284c7;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            cursor: none; 
+            background-color: var(--bg-primary); 
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        .bg-card { background-color: var(--bg-secondary); }
+        .border-theme { border-color: var(--border-color); }
+        .text-theme-secondary { color: var(--text-secondary); }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+        
+        /* Custom Cursor */
+        #custom-cursor {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            transition: transform 0.1s ease-out, opacity 0.3s ease;
+            mix-blend-mode: difference;
+        }
+        #custom-cursor-follower {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--accent-color);
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9998;
+            transition: transform 0.15s ease-out, opacity 0.3s ease;
+            opacity: 0.3;
+        }
+
+        /* Seamless Page Transitions */
+        @keyframes pageIn {
+            from { opacity: 0; transform: translateY(10px) scale(0.99); filter: blur(4px); }
+            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+
+        .page-transition {
+            animation: pageIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+
+        /* Staggered Entrance Animations */
+        @keyframes cascadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .stagger-fade-in > * {
+            opacity: 0;
+            animation: cascadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .stagger-fade-in > *:nth-child(1) { animation-delay: 0.05s; }
+        .stagger-fade-in > *:nth-child(2) { animation-delay: 0.1s; }
+        .stagger-fade-in > *:nth-child(3) { animation-delay: 0.15s; }
+        .stagger-fade-in > *:nth-child(4) { animation-delay: 0.2s; }
+        .stagger-fade-in > *:nth-child(5) { animation-delay: 0.25s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .animate-float {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .active-nav-glow {
+            box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.3);
+        }
+        
+        /* Glass morphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        a, button, input, select {
+            cursor: none;
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "@google/genai": "https://esm.sh/@google/genai@^1.36.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "recharts": "https://esm.sh/recharts@^3.6.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+  }
+}
+</script>
+</head>
+<body class="antialiased overflow-x-hidden">
+    <div id="custom-cursor"></div>
+    <div id="custom-cursor-follower"></div>
+    <div id="root"></div>
+
+    <script>
+        const cursor = document.getElementById('custom-cursor');
+        const follower = document.getElementById('custom-cursor-follower');
+        
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.transform = `translate3d(${e.clientX - 4}px, ${e.clientY - 4}px, 0)`;
+            follower.style.transform = `translate3d(${e.clientX - 16}px, ${e.clientY - 16}px, 0)`;
+        });
+
+        document.addEventListener('mousedown', () => {
+            cursor.style.transform += ' scale(2.5)';
+            follower.style.transform += ' scale(0.5)';
+        });
+
+        document.addEventListener('mouseup', () => {
+            cursor.style.transform = cursor.style.transform.replace(' scale(2.5)', '');
+            follower.style.transform = follower.style.transform.replace(' scale(0.5)', '');
+        });
+
+        // Hover effects for interactive elements
+        const hoverables = 'button, a, input, select, .hover-target';
+        document.addEventListener('mouseover', (e) => {
+            if (e.target.closest(hoverables)) {
+                follower.style.transform += ' scale(1.5)';
+                follower.style.background = 'rgba(99, 102, 241, 0.1)';
+                follower.style.borderColor = 'transparent';
+                cursor.style.opacity = '0';
+            }
+        });
+
+        document.addEventListener('mouseout', (e) => {
+            if (e.target.closest(hoverables)) {
+                follower.style.transform = follower.style.transform.replace(' scale(1.5)', '');
+                follower.style.background = 'transparent';
+                follower.style.borderColor = '#6366f1';
+                cursor.style.opacity = '1';
+            }
+        });
+    </script>
+</body>
+</html>
