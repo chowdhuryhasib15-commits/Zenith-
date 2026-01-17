@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Subject, PomodoroLog, AppState } from '../types';
 import { 
@@ -10,7 +9,7 @@ import {
   Settings2, CheckCircle2, Flame, Trophy, Clock, Trash2, 
   Download, RefreshCw, Lock, ChevronDown, Volume2, VolumeX,
   TrendingUp, Activity, CloudRain, Music, Wind, Youtube, Disc, ListMusic, ChevronRight, ShieldCheck, 
-  Radio, Volume1, Signal, Zap, SignalHigh, SignalMedium, SignalLow
+  Radio, Volume1, Signal, Zap, SignalHigh, SignalMedium, SignalLow, Waves
 } from 'lucide-react';
 
 interface PomodoroPageProps {
@@ -27,33 +26,39 @@ const AMBIENT_PRESETS = [
   { id: 'noise', label: 'White Noise', icon: <Wind size={20} />, ytId: 'nMfPqeZjc2c' }, 
 ];
 
-// Reactive Visualizer Component - Physically tied to volume/signal
+// High-Fidelity Reactive Visualizer
 const Visualizer = ({ isActive, volume, isMuted, color = "bg-indigo-400" }: { isActive: boolean; volume: number; isMuted: boolean; color?: string }) => {
   const intensity = isMuted ? 0 : volume / 100;
   
   return (
     <div 
-      className="flex items-end gap-[3px] h-6 px-1" 
+      className="flex items-end gap-[2px] h-8 px-2" 
       style={{ '--intensity': intensity } as React.CSSProperties}
     >
-      {[...Array(10)].map((_, i) => (
-        <div 
-          key={i}
-          className={`w-[3px] rounded-full transition-all duration-300 ${color} ${isActive && intensity > 0 ? 'animate-reactive-pomo' : 'h-[3px] opacity-10'}`}
-          style={{ 
-            animationDelay: `${i * 0.05}s`,
-            opacity: isActive ? 0.1 + (0.9 * intensity) : 0.1,
-            animationDuration: `${0.3 + (0.7 * (1 - intensity))}s`
-          }}
-        />
-      ))}
+      {[...Array(16)].map((_, i) => {
+        // Create distinct physics for different bars
+        const seed = (i * 0.13) % 1;
+        const duration = 0.4 + (seed * 0.8);
+        return (
+          <div 
+            key={i}
+            className={`w-[4px] rounded-full transition-all duration-500 ${color} ${isActive && intensity > 0 ? 'animate-v-pulse' : 'h-[3px] opacity-10'}`}
+            style={{ 
+              animationDelay: `${i * 0.04}s`,
+              opacity: isActive ? 0.05 + (0.95 * intensity) : 0.1,
+              animationDuration: `${duration / (0.5 + intensity)}s`,
+              boxShadow: isActive && intensity > 0.5 ? `0 0 15px -2px currentColor` : 'none'
+            }}
+          />
+        );
+      })}
       <style>{`
-        @keyframes reactive-pomo {
-          0%, 100% { height: 3px; }
-          50% { height: calc(100% * var(--intensity)); }
+        @keyframes v-pulse {
+          0%, 100% { height: 4px; transform: scaleY(1); }
+          50% { height: calc(100% * var(--intensity)); transform: scaleY(1.2); }
         }
-        .animate-reactive-pomo {
-          animation: reactive-pomo var(--duration, 0.6s) ease-in-out infinite;
+        .animate-v-pulse {
+          animation: v-pulse var(--duration, 0.8s) ease-in-out infinite;
           transform-origin: bottom;
         }
       `}</style>
@@ -409,9 +414,9 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                     </div>
                     <div className="flex gap-4">
                       <div className="relative flex-1 group">
-                        <Youtube className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-rose-500 transition-colors" size={20} />
+                        <Youtube className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-rose-500 transition-colors" size={18} />
                         <input 
-                          className="w-full bg-slate-50 border border-slate-200 rounded-3xl pl-14 pr-6 py-5 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-14 pr-6 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all"
                           placeholder="Paste YouTube URL..."
                           value={customYtUrl}
                           onChange={(e) => setCustomYtUrl(e.target.value)}
@@ -431,6 +436,17 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                   </div>
                 </div>
                 <div className="lg:col-span-4 bg-slate-900 rounded-[56px] p-10 text-white relative overflow-hidden group flex flex-col justify-between">
+                  {/* Waveform Background Decoration */}
+                  <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
+                     <svg className="w-full h-full" viewBox="0 0 400 600" preserveAspectRatio="none">
+                       <path 
+                        d="M0,300 C100,200 300,400 400,300 L400,600 L0,600 Z" 
+                        fill="white" 
+                        className={`transition-all duration-1000 ${selectedAmbient ? 'animate-pulse' : ''}`}
+                       />
+                     </svg>
+                  </div>
+
                   <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12 -z-0 scale-125 transition-transform group-hover:rotate-0 duration-[3s]"><Disc size={120} /></div>
                   <div className="relative z-10">
                     <h3 className="text-4xl font-black tracking-tighter leading-none mb-4">Acoustic <br /><span className="text-indigo-400">Environment.</span></h3>
@@ -450,6 +466,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                                <p className="text-sm font-bold truncate max-w-[140px]">{selectedAmbient === 'custom' ? 'Custom Input' : AMBIENT_PRESETS.find(p => p.id === selectedAmbient)?.label}</p>
                              </div>
                            </div>
+                           {/* Enhanced 16-bar Visualizer */}
                            <Visualizer isActive={true} volume={hubVolume} isMuted={isHubMuted} />
                         </div>
                         
@@ -457,49 +474,53 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                           <div className="flex items-center gap-4">
                             <button 
                               onClick={() => setIsHubMuted(!isHubMuted)}
-                              className={`p-3 rounded-xl transition-all ${isHubMuted ? 'bg-rose-500/20 text-rose-500' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                              className={`p-4 rounded-2xl transition-all shadow-lg ${isHubMuted ? 'bg-rose-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}
                             >
-                              {isHubMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                              {isHubMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
                             </button>
                             <div className="flex-1 space-y-2">
                               <div className="flex justify-between text-[10px] font-black uppercase text-white/40">
                                 <span className="flex items-center gap-1">
                                   <DynamicSignalIcon volume={hubVolume} isMuted={isHubMuted} />
-                                  Signal Strength
+                                  Master Gain
                                 </span>
-                                <span className={isHubMuted ? 'text-rose-400' : 'text-indigo-400'}>{signalQuality}</span>
+                                <span className={isHubMuted ? 'text-rose-400 animate-pulse' : 'text-indigo-400'}>{signalQuality}</span>
                               </div>
-                              <input 
-                                type="range" 
-                                min="0" 
-                                max="100" 
-                                value={hubVolume} 
-                                onChange={(e) => setHubVolume(Number(e.target.value))}
-                                className={`w-full h-1.5 rounded-full appearance-none cursor-pointer transition-all ${isHubMuted ? 'bg-rose-900/40 accent-rose-500' : 'bg-white/10 accent-indigo-400 hover:bg-white/20'}`}
-                              />
+                              <div className="relative h-6 flex items-center">
+                                <input 
+                                  type="range" 
+                                  min="0" 
+                                  max="100" 
+                                  value={hubVolume} 
+                                  onChange={(e) => setHubVolume(Number(e.target.value))}
+                                  className={`w-full h-1.5 rounded-full appearance-none cursor-pointer transition-all z-10 ${isHubMuted ? 'bg-rose-900/40 accent-rose-500' : 'bg-white/10 accent-indigo-400 hover:bg-white/20'}`}
+                                />
+                                {/* Track Highlight Overlay */}
+                                <div 
+                                  className="absolute left-0 top-[11px] h-1.5 rounded-l-full bg-indigo-500 pointer-events-none transition-all duration-300" 
+                                  style={{ width: isHubMuted ? '0%' : `${hubVolume}%`, opacity: 0.5 }}
+                                />
+                              </div>
                             </div>
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-3">
-                             <button className="py-3 bg-white/5 hover:bg-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/5 transition-all flex items-center justify-center gap-2">
-                               <Zap size={14} className="text-amber-400" /> Boost
-                             </button>
+                          <div className="grid grid-cols-1 gap-3">
                              <button 
                                 onClick={() => { setSelectedAmbient(null); setPlayingYtId(null); }} 
-                                className="py-3 bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-rose-500/20 transition-all flex items-center justify-center gap-2"
+                                className="py-3.5 bg-rose-500/10 hover:bg-rose-500/30 text-rose-300 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-rose-500/20 transition-all flex items-center justify-center gap-2 group"
                               >
-                                <X size={14} /> Kill
+                                <X size={14} className="group-hover:rotate-90 transition-transform" /> Terminate Transmission
                              </button>
                           </div>
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="p-8 bg-white/5 rounded-[32px] border border-white/5 text-center italic text-slate-500 text-xs mt-12 flex flex-col items-center gap-4">
-                      <div className="w-12 h-12 rounded-full border border-dashed border-slate-700 flex items-center justify-center animate-spin duration-[10s]">
-                        <Disc size={20} />
+                    <div className="p-10 bg-white/5 rounded-[40px] border border-white/5 text-center italic text-slate-500 text-xs mt-12 flex flex-col items-center gap-6">
+                      <div className="w-16 h-16 rounded-3xl border border-dashed border-slate-700 flex items-center justify-center animate-spin duration-[15s] opacity-40">
+                        <Waves size={28} />
                       </div>
-                      Awaiting sonic initiation...
+                      <p className="font-black uppercase tracking-[0.2em] opacity-40">Initialize Transmission</p>
                     </div>
                   )}
                 </div>
