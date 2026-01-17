@@ -1,15 +1,14 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Subject, PomodoroLog, AppState } from '../types';
 import { 
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
-  CartesianGrid, PieChart, Pie, Cell, Legend, AreaChart, Area
+  XAxis, YAxis, Tooltip, ResponsiveContainer, 
+  CartesianGrid, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import { 
   Play, Pause, X, 
   Settings2, CheckCircle2, Flame, Trophy, Clock, Trash2, 
-  Download, Upload, RefreshCw, Lock, ChevronDown, Volume2, VolumeX,
-  PieChart as PieIcon, TrendingUp, Activity
+  Download, RefreshCw, Lock, ChevronDown, Volume2, VolumeX,
+  PieChart as PieIcon, TrendingUp, Activity, CloudRain, Music, Wind, Youtube, Disc, ListMusic, ChevronRight, ShieldCheck
 } from 'lucide-react';
 
 interface PomodoroPageProps {
@@ -20,7 +19,14 @@ interface PomodoroPageProps {
   onRestore: (state: AppState) => void;
 }
 
+const AMBIENT_PRESETS = [
+  { id: 'lofi', label: 'Lo-Fi Focus', icon: <Music size={20} />, ytId: 'jfKfPfyJRdk' }, // Lofi Girl
+  { id: 'rain', label: 'Deep Rain', icon: <CloudRain size={20} />, ytId: 'mPZkdNFkNps' }, // Rain sounds
+  { id: 'noise', label: 'White Noise', icon: <Wind size={20} />, ytId: 'nMfPqeZjc2c' }, // White noise
+];
+
 const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs, fullState, onRestore }) => {
+  // Timer State
   const [focusDuration, setFocusDuration] = useState(52);
   const [breakDuration, setBreakDuration] = useState(17);
   const [minutes, setMinutes] = useState(52);
@@ -33,15 +39,18 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   const [hasTriedToStart, setHasTriedToStart] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
+  // Audio Hub State
+  const [activeTab, setActiveTab] = useState<'stats' | 'audio'>('stats');
+  const [selectedAmbient, setSelectedAmbient] = useState<string | null>(null);
+  const [customYtUrl, setCustomYtUrl] = useState('');
+  const [playingYtId, setPlayingYtId] = useState<string | null>(null);
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Filter subjects to remove "Papers" and deduplicate for a cleaner UI
   const pomodoroSubjects = useMemo(() => {
     const seen = new Set<string>();
     const result: Subject[] = [];
-    
     subjects.forEach(s => {
       const baseName = s.name.replace(/\s*(1st|2nd)?\s*Paper/gi, '').trim();
       if (!seen.has(baseName)) {
@@ -55,7 +64,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   const currentSubject = subjects.find(s => s.id === selectedSub);
   const currentDisplaySubject = pomodoroSubjects.find(s => s.id === selectedSub);
 
-  // Dynamic Browser Tab Title Update
   useEffect(() => {
     if (isActive) {
       const modeEmoji = mode === 'focus' ? '🎯' : '☕';
@@ -70,18 +78,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   }, [isActive, minutes, seconds, mode]);
 
   const totalSeconds = (mode === 'focus' ? focusDuration : breakDuration) * 60;
-  const currentSeconds = minutes * 60 + seconds;
-  const progress = ((totalSeconds - currentSeconds) / totalSeconds) * 100;
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const progress = (((totalSeconds - (minutes * 60 + seconds)) / totalSeconds) * 100);
 
   useEffect(() => {
     if (!isActive) {
@@ -90,148 +87,21 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     }
   }, [focusDuration, breakDuration, mode, isActive]);
 
-  const playSound = (type: 'complete' | 'transition') => {
-    if (isMuted) return;
-    try {
-      const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      if (type === 'complete') {
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.2);
-        gain.gain.setValueAtTime(0, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-      } else {
-        osc.frequency.setValueAtTime(440, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-      }
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.6);
-    } catch (e) { console.warn("Audio blocked", e); }
-  };
-
-  const startTimer = () => {
-    if (!selectedSub) {
-      setHasTriedToStart(true);
-      setTimeout(() => setHasTriedToStart(false), 2000);
-      return;
-    }
-    setIsActive(true);
-    playSound('transition');
-  };
-
-  const pauseTimer = () => {
-    setIsActive(false);
-    playSound('transition');
-  };
-
-  const cancelSession = () => {
-    if (window.confirm("Abort this focus session? Progress will not be saved.")) {
-      setIsActive(false);
-      resetTimer();
-    }
-  };
-
-  const resetTimer = (newMode?: 'focus' | 'break') => {
-    setIsActive(false);
-    if (timerRef.current) clearInterval(timerRef.current);
-    const m = newMode || mode;
-    setMinutes(m === 'focus' ? focusDuration : breakDuration);
-    setSeconds(0);
-  };
-
-  const handleModeChange = (newMode: 'focus' | 'break') => {
-    setMode(newMode);
-    playSound('transition');
-    resetTimer(newMode);
-  };
-
-  const handleFinishEarly = () => {
-    if (mode === 'focus') {
-      const elapsedSeconds = (focusDuration * 60) - (minutes * 60 + seconds);
-      const elapsedMinutes = Math.max(1, Math.floor(elapsedSeconds / 60));
-      onComplete({
-        id: Date.now().toString(),
-        subjectId: selectedSub,
-        duration: elapsedMinutes,
-        timestamp: new Date().toISOString()
-      });
-      playSound('complete');
-      handleModeChange('break');
-    } else {
-      handleModeChange('focus');
-    }
-  };
-
-  const handleExportData = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullState));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `zenith_vault_pomodoro_${new Date().toISOString().split('T')[0]}.json`);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-  };
-
-  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const importedData = JSON.parse(event.target?.result as string);
-        if (window.confirm("CRITICAL: This will overwrite current data. Continue?")) {
-          onRestore(importedData);
-          alert("Vault restored successfully.");
-        }
-      } catch (error) {
-        alert("Invalid vault file.");
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const handleClearAllData = () => {
-    if (window.confirm("FINAL WARNING: This will permanently DELETE all study data. Purge system?")) {
-      localStorage.clear();
-      window.location.reload();
-    }
-  };
-
-  useEffect(() => {
-    if (isActive) {
-      timerRef.current = setInterval(() => {
-        if (seconds > 0) {
-          setSeconds(prev => prev - 1);
-        } else if (minutes > 0) {
-          setMinutes(prev => prev - 1);
-          setSeconds(59);
-        } else {
-          pauseTimer();
-          playSound('complete');
-          if (mode === 'focus') {
-            onComplete({ id: Date.now().toString(), subjectId: selectedSub, duration: focusDuration, timestamp: new Date().toISOString() });
-            handleModeChange('break');
-          } else {
-            handleModeChange('focus');
-          }
-        }
-      }, 1000);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [isActive, minutes, seconds, mode, selectedSub, focusDuration]);
-
   const streakCount = useMemo(() => {
-    const today = new Date().toDateString();
-    return logs.filter(l => new Date(l.timestamp).toDateString() === today).length;
+    if (logs.length === 0) return 0;
+    const uniqueDates: number[] = Array.from<number>(new Set(logs.map(log => {
+      const d = new Date(log.timestamp);
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    }))).sort((a, b) => b - a);
+    const todayMidnight = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime();
+    const yesterdayMidnight = todayMidnight - (24 * 60 * 60 * 1000);
+    if (uniqueDates[0] < yesterdayMidnight) return 0;
+    let streak = 1;
+    for (let i = 0; i < uniqueDates.length - 1; i++) {
+      if (uniqueDates[i] - uniqueDates[i + 1] === (24 * 60 * 60 * 1000)) streak++;
+      else break;
+    }
+    return streak;
   }, [logs]);
 
   const totalFocusMinutes = useMemo(() => logs.reduce((acc, l) => acc + l.duration, 0), [logs]);
@@ -243,35 +113,100 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
       return d.toDateString();
     }).reverse();
     return last7Days.map(dateStr => {
-      const dayLogs = logs.filter(l => new Date(l.timestamp).toDateString() === dateStr);
-      const total = dayLogs.reduce((acc, l) => acc + l.duration, 0);
+      const total = logs.filter(l => new Date(l.timestamp).toDateString() === dateStr).reduce((acc, l) => acc + l.duration, 0);
       return { name: dateStr.split(' ')[0], minutes: total };
     });
   }, [logs]);
 
-  // Updated Aggregated Subject Distribution for Donut Chart (stripping Paper 1/2)
   const subjectDistributionData = useMemo(() => {
     const distribution: Record<string, { value: number, color: string }> = {};
-    
     logs.forEach(log => {
       const sub = subjects.find(s => s.id === log.subjectId);
       if (!sub) return;
-      
-      // Normalize name to aggregate Papers (e.g. Physics 1st & 2nd -> Physics)
       const normalizedName = sub.name.replace(/\s*(1st|2nd)?\s*Paper/gi, '').trim();
-      
-      if (!distribution[normalizedName]) {
-        distribution[normalizedName] = { value: 0, color: sub.color };
-      }
+      if (!distribution[normalizedName]) distribution[normalizedName] = { value: 0, color: sub.color };
       distribution[normalizedName].value += log.duration;
     });
-
-    return Object.entries(distribution).map(([name, data]) => ({
-      name,
-      value: data.value,
-      color: data.color
-    })).sort((a, b) => b.value - a.value);
+    return Object.entries(distribution).map(([name, data]) => ({ name, value: data.value, color: data.color })).sort((a, b) => b.value - a.value);
   }, [logs, subjects]);
+
+  const startTimer = () => {
+    if (!selectedSub) {
+      setHasTriedToStart(true);
+      setTimeout(() => setHasTriedToStart(false), 2000);
+      return;
+    }
+    setIsActive(true);
+  };
+
+  const pauseTimer = () => setIsActive(false);
+
+  const resetTimer = (newMode?: 'focus' | 'break') => {
+    setIsActive(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+    setMinutes((newMode || mode) === 'focus' ? focusDuration : breakDuration);
+    setSeconds(0);
+  };
+
+  const handleModeChange = (newMode: 'focus' | 'break') => {
+    setMode(newMode);
+    resetTimer(newMode);
+  };
+
+  const handleFinishEarly = () => {
+    pauseTimer();
+    if (mode === 'focus') {
+      onComplete({ 
+        id: Date.now().toString(), 
+        subjectId: selectedSub, 
+        duration: focusDuration, 
+        timestamp: new Date().toISOString() 
+      });
+      handleModeChange('break');
+    } else {
+      handleModeChange('focus');
+    }
+  };
+
+  useEffect(() => {
+    if (isActive) {
+      timerRef.current = setInterval(() => {
+        if (seconds > 0) setSeconds(prev => prev - 1);
+        else if (minutes > 0) { setMinutes(prev => prev - 1); setSeconds(59); }
+        else {
+          pauseTimer();
+          if (mode === 'focus') {
+            onComplete({ id: Date.now().toString(), subjectId: selectedSub, duration: focusDuration, timestamp: new Date().toISOString() });
+            handleModeChange('break');
+          } else handleModeChange('focus');
+        }
+      }, 1000);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [isActive, minutes, seconds, mode, selectedSub, focusDuration]);
+
+  // Audio Hub Helpers
+  const handleCustomYtSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = customYtUrl.match(regExp);
+    if (match && match[2].length === 11) {
+      setPlayingYtId(match[2]);
+      setSelectedAmbient('custom');
+    } else {
+      alert("Invalid YouTube URL. Please use a full watch URL or share link.");
+    }
+  };
+
+  const selectAmbient = (id: string, ytId: string) => {
+    if (selectedAmbient === id) {
+      setSelectedAmbient(null);
+      setPlayingYtId(null);
+    } else {
+      setSelectedAmbient(id);
+      setPlayingYtId(ytId);
+    }
+  };
 
   const radius = 130;
   const strokeWidth = 14;
@@ -301,20 +236,12 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
               {isDropdownOpen && (
                 <div className="absolute top-[calc(100%+12px)] left-0 right-0 glass rounded-[32px] border border-theme shadow-2xl p-2 z-[100] animate-in slide-in-from-top-4 fade-in duration-200 overflow-hidden">
                   <div className="max-h-64 overflow-y-auto custom-scrollbar pr-1">
-                    {pomodoroSubjects.length === 0 ? (
-                      <div className="p-4 text-center text-xs font-bold text-theme-secondary uppercase tracking-widest italic opacity-50">No subjects found</div>
-                    ) : (
-                      pomodoroSubjects.map(s => (
-                        <button
-                          key={s.id}
-                          onClick={() => { setSelectedSub(s.id); setIsDropdownOpen(false); setHasTriedToStart(false); }}
-                          className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all text-left group hover:bg-indigo-50/50 ${selectedSub === s.id ? 'bg-indigo-50' : ''}`}
-                        >
-                          <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: s.color }} />
-                          <span className={`text-xs font-black uppercase tracking-widest truncate ${selectedSub === s.id ? 'text-indigo-600' : 'text-theme'}`}>{s.name}</span>
-                        </button>
-                      ))
-                    )}
+                    {pomodoroSubjects.map(s => (
+                      <button key={s.id} onClick={() => { setSelectedSub(s.id); setIsDropdownOpen(false); setHasTriedToStart(false); }} className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all text-left group hover:bg-indigo-50/50 ${selectedSub === s.id ? 'bg-indigo-50' : ''}`}>
+                        <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: s.color }} />
+                        <span className={`text-xs font-black uppercase tracking-widest truncate ${selectedSub === s.id ? 'text-indigo-600' : 'text-theme'}`}>{s.name}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
@@ -344,120 +271,161 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
             </button>
           ) : (
             <><button onClick={pauseTimer} className="w-20 h-20 rounded-[28px] bg-slate-900 text-white flex items-center justify-center shadow-xl hover:bg-indigo-600 active:scale-90 transition-all group"><Pause size={32} fill="currentColor" /></button>
-            <button onClick={cancelSession} className="w-20 h-20 rounded-[28px] bg-white text-rose-500 border-2 border-rose-50 flex items-center justify-center shadow-sm hover:bg-rose-50 active:scale-90 transition-all"><X size={32} /></button></>
+            <button onClick={() => { if(window.confirm("Abort?")) resetTimer(); }} className="w-20 h-20 rounded-[28px] bg-white text-rose-500 border-2 border-rose-50 flex items-center justify-center shadow-sm hover:bg-rose-50 active:scale-90 transition-all"><X size={32} /></button></>
           )}
-          {isActive && <button onClick={handleFinishEarly} className="p-5 text-emerald-600 hover:bg-emerald-50 rounded-[24px] transition-all group"><CheckCircle2 size={28} /></button>}
+          {isActive && <button onClick={() => { if(mode === 'focus') handleFinishEarly(); else handleModeChange('focus'); }} className="p-5 text-emerald-600 hover:bg-emerald-50 rounded-[24px] transition-all group"><CheckCircle2 size={28} /></button>}
           {!isActive && <button onClick={() => setShowSettings(true)} className="p-6 text-slate-400 hover:text-indigo-600 transition-all hover:bg-indigo-50 rounded-[24px] group"><Settings2 size={28} /></button>}
         </div>
       </section>
 
+      {/* Acoustic Engine: Persistence Layer */}
+      {playingYtId && (
+        <div 
+          className="fixed top-2 right-2 w-[10px] h-[10px] opacity-[0.02] z-[-50] overflow-hidden rounded-full bg-black shadow-2xl border border-white/10"
+          style={{ transform: 'scale(0.1)', pointerEvents: 'none' }}
+        >
+          {/* Key forces fresh reload on track change to bypass browser autoplay blocks */}
+          <iframe 
+            key={playingYtId}
+            width="100" 
+            height="100" 
+            src={`https://www.youtube.com/embed/${playingYtId}?autoplay=1&mute=0&loop=1&playlist=${playingYtId}&controls=0&modestbranding=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`} 
+            title="Zenith Acoustic Hub" 
+            frameBorder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          />
+        </div>
+      )}
+
       {!isActive && (
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-12 duration-1000 max-w-7xl mx-auto w-full px-4">
+        <section className="max-w-7xl mx-auto w-full px-4 space-y-12">
           
-          {/* Main Trend Area Chart */}
-          <div className="lg:col-span-8 bg-white p-10 rounded-[56px] border border-slate-100 shadow-sm flex flex-col h-[400px]">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><Activity size={24} /></div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Focus Velocity</h3>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Rolling 7-Day Performance</p>
+          <div className="flex gap-4 p-2 bg-slate-100/50 w-fit mx-auto rounded-[24px] border border-slate-200 shadow-inner">
+            <button onClick={() => setActiveTab('stats')} className={`flex items-center gap-2 px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'stats' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
+              <Activity size={16} /> Performance
+            </button>
+            <button onClick={() => setActiveTab('audio')} className={`flex items-center gap-2 px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'audio' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
+              <Disc size={16} /> Acoustic Hub
+            </button>
+          </div>
+
+          <div className="stagger-child-reveal">
+            {activeTab === 'stats' ? (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <div className="lg:col-span-8 bg-white p-10 rounded-[56px] border border-slate-100 shadow-sm h-[400px]">
+                  <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-4"><div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><Activity size={24} /></div><div><h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Focus Velocity</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Rolling 7-Day Performance</p></div></div>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest"><TrendingUp size={14} /> Active</div>
+                  </div>
+                  <div className="h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={dailyData}>
+                        <defs><linearGradient id="pomoGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#94a3b8' }} />
+                        <YAxis hide />
+                        <Tooltip cursor={{ stroke: '#6366f1', strokeWidth: 2, strokeDasharray: '5 5' }} contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)' }} />
+                        <Area type="monotone" dataKey="minutes" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#pomoGrad)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div className="lg:col-span-4 grid grid-cols-1 gap-6">
+                  <div className="bg-slate-900 text-white p-10 rounded-[48px] flex items-center gap-6 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-125 transition-transform duration-700"><Flame size={120} /></div>
+                    <Flame className="text-orange-500 relative z-10" size={32} />
+                    <div className="relative z-10"><p className="text-5xl font-black tabular-nums leading-none tracking-tighter">{streakCount}</p><p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-2">Daily Streak</p></div>
+                  </div>
+                  <div className="bg-indigo-600 text-white p-10 rounded-[48px] flex items-center gap-6 shadow-xl relative overflow-hidden group">
+                    <div className="absolute bottom-0 right-0 p-12 opacity-10 group-hover:rotate-12 transition-transform duration-700"><Trophy size={120} /></div>
+                    <Trophy className="text-indigo-200 relative z-10" size={32} />
+                    <div className="relative z-10"><p className="text-5xl font-black tabular-nums leading-none tracking-tighter">{Math.round(totalFocusMinutes / 60)}h</p><p className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.3em] mt-2">Total Focus</p></div>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest">
-                <TrendingUp size={14} /> Active Period
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <div className="lg:col-span-8 space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {AMBIENT_PRESETS.map((p) => (
+                      <button 
+                        key={p.id} 
+                        onClick={() => selectAmbient(p.id, p.ytId)}
+                        className={`group p-8 rounded-[40px] border-2 transition-all flex flex-col items-center text-center gap-4 active:scale-95 ${selectedAmbient === p.id ? 'bg-indigo-600 border-indigo-400 text-white shadow-xl scale-105' : 'bg-white border-slate-100 hover:border-indigo-100 text-slate-600'}`}
+                      >
+                        <div className={`p-5 rounded-3xl transition-all ${selectedAmbient === p.id ? 'bg-white/20' : 'bg-slate-50 text-indigo-600 group-hover:scale-110'}`}>{p.icon}</div>
+                        <span className="text-xs font-black uppercase tracking-widest">{p.label}</span>
+                        {selectedAmbient === p.id && (
+                          <div className="flex gap-1 items-end h-4 mt-2">
+                            <div className="w-1 bg-white/40 rounded-full animate-pulse h-2" />
+                            <div className="w-1 bg-white/60 rounded-full animate-pulse h-4 delay-75" />
+                            <div className="w-1 bg-white/40 rounded-full animate-pulse h-2 delay-150" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="bg-white p-10 rounded-[48px] border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-4 mb-8">
+                      <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><ListMusic size={24} /></div>
+                      <div>
+                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Custom Engine</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Inject YouTube Playlists or Tracks</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="relative flex-1 group">
+                        <Youtube className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-rose-500 transition-colors" size={20} />
+                        <input 
+                          className="w-full bg-slate-50 border border-slate-200 rounded-3xl pl-14 pr-6 py-5 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all"
+                          placeholder="Paste YouTube URL..."
+                          value={customYtUrl}
+                          onChange={(e) => setCustomYtUrl(e.target.value)}
+                        />
+                      </div>
+                      <button 
+                        onClick={handleCustomYtSubmit}
+                        className="bg-slate-900 text-white px-8 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-indigo-600 transition-all active:scale-95"
+                      >
+                        Initiate
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-6 leading-relaxed flex items-center gap-2">
+                      <ShieldCheck size={14} className="text-indigo-400" />
+                      Studio audio feed optimized for persistent background playback.
+                    </p>
+                  </div>
+                </div>
+                <div className="lg:col-span-4 bg-slate-900 rounded-[56px] p-10 text-white relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12 -z-0 scale-125 transition-transform group-hover:rotate-0 duration-[3s]"><Disc size={120} /></div>
+                  <div className="relative z-10 h-full flex flex-col justify-between min-h-[300px]">
+                    <div>
+                      <h3 className="text-4xl font-black tracking-tighter leading-none mb-4">Acoustic <br /><span className="text-indigo-400">Environment.</span></h3>
+                      <p className="text-slate-400 text-sm font-medium leading-relaxed">High-fidelity ambient masking reduces cognitive friction and improves focus retention.</p>
+                    </div>
+                    {selectedAmbient ? (
+                      <div className="p-6 bg-white/10 rounded-[32px] border border-white/10 backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 shadow-2xl">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-indigo-500 rounded-2xl flex items-center justify-center animate-spin duration-[8000ms]"><Disc size={24} /></div>
+                          <div>
+                            <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" /> Live Feed
+                            </p>
+                            <p className="text-sm font-bold truncate max-w-[140px]">{selectedAmbient === 'custom' ? 'Custom Input' : AMBIENT_PRESETS.find(p => p.id === selectedAmbient)?.label}</p>
+                          </div>
+                        </div>
+                        <button onClick={() => { setSelectedAmbient(null); setPlayingYtId(null); }} className="w-full mt-6 py-3 bg-white/10 hover:bg-rose-500/20 text-rose-300 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/10 transition-all">Kill Signal</button>
+                      </div>
+                    ) : (
+                      <div className="p-6 bg-white/5 rounded-[32px] border border-white/5 text-center italic text-slate-500 text-xs">
+                        Awaiting sonic initiation...
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="flex-1 w-full overflow-hidden">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dailyData}>
-                  <defs>
-                    <linearGradient id="colorFocus" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#94a3b8' }} />
-                  <YAxis hide />
-                  <Tooltip 
-                    cursor={{ stroke: '#6366f1', strokeWidth: 2, strokeDasharray: '5 5' }}
-                    contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)', padding: '16px' }}
-                  />
-                  <Area type="monotone" dataKey="minutes" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorFocus)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            )}
           </div>
-
-          {/* Quick Metrics Cards */}
-          <div className="lg:col-span-4 grid grid-cols-1 gap-6">
-            <div className="bg-slate-900 text-white p-10 rounded-[48px] flex items-center gap-6 shadow-2xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-125 transition-transform duration-700"><Flame size={120} /></div>
-              <Flame className="text-orange-500 relative z-10" size={32} />
-              <div className="relative z-10">
-                <p className="text-5xl font-black tabular-nums leading-none tracking-tighter">{streakCount}</p>
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-2">Daily Streak</p>
-              </div>
-            </div>
-            <div className="bg-indigo-600 text-white p-10 rounded-[48px] flex items-center gap-6 shadow-xl relative overflow-hidden group">
-              <div className="absolute bottom-0 right-0 p-12 opacity-10 group-hover:rotate-12 transition-transform duration-700"><Trophy size={120} /></div>
-              <Trophy className="text-indigo-200 relative z-10" size={32} />
-              <div className="relative z-10">
-                <p className="text-5xl font-black tabular-nums leading-none tracking-tighter">{Math.round(totalFocusMinutes / 60)}h</p>
-                <p className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.3em] mt-2">Total Focus</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Subject Distribution Donut Chart */}
-          <div className="lg:col-span-12 bg-white p-12 rounded-[64px] border border-slate-100 shadow-sm grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-             <div>
-               <div className="flex items-center gap-4 mb-10">
-                 <div className="p-4 bg-violet-50 text-violet-600 rounded-2xl"><PieIcon size={24} /></div>
-                 <div>
-                   <h3 className="text-2xl font-black text-slate-900 tracking-tight">Domain Distribution</h3>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-1">Focus Balance Analysis</p>
-                 </div>
-               </div>
-               <div className="space-y-4">
-                 {subjectDistributionData.slice(0, 4).map((item, idx) => (
-                   <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
-                     <div className="flex items-center gap-3">
-                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                       <span className="text-sm font-bold text-slate-700">{item.name}</span>
-                     </div>
-                     <span className="text-sm font-black text-slate-900">{Math.round((item.value / totalFocusMinutes) * 100)}%</span>
-                   </div>
-                 ))}
-                 {subjectDistributionData.length === 0 && <p className="text-slate-400 italic text-sm py-4">No focus data recorded yet.</p>}
-               </div>
-             </div>
-             <div className="h-[300px] w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={subjectDistributionData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={80}
-                      outerRadius={120}
-                      paddingAngle={8}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {subjectDistributionData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)', padding: '12px' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-             </div>
-          </div>
-
         </section>
       )}
 
@@ -465,63 +433,26 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
         <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-[20px] z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-white rounded-[64px] w-full max-w-5xl p-12 lg:p-16 shadow-2xl relative animate-in zoom-in-95 overflow-hidden">
              <div className="flex items-center justify-between mb-16 relative z-10">
-                <div>
-                  <h3 className="text-5xl font-black tracking-tighter text-slate-900">System Tuning</h3>
-                  <p className="text-slate-400 text-xs font-black uppercase tracking-[0.4em] mt-2">Zenith Engine Configuration</p>
-                </div>
+                <div><h3 className="text-5xl font-black tracking-tighter text-slate-900">System Tuning</h3><p className="text-slate-400 text-xs font-black uppercase tracking-[0.4em] mt-2">Zenith Engine Configuration</p></div>
                 <button onClick={() => setShowSettings(false)} className="p-4 hover:bg-slate-100 rounded-[28px] transition-transform active:scale-90"><X size={32} /></button>
              </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-16 relative z-10">
                 <div className="space-y-10">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-[11px] font-black text-indigo-500 uppercase tracking-[0.3em] flex items-center gap-3"><Clock size={16} /> Phase Cycles</h4>
-                    <button 
-                      onClick={() => setIsMuted(!isMuted)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isMuted ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-600'}`}
-                    >
-                      {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-                      {isMuted ? 'Muted' : 'Audio On'}
-                    </button>
+                    <button onClick={() => setIsMuted(!isMuted)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isMuted ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-600'}`}>{isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}{isMuted ? 'Muted' : 'Audio On'}</button>
                   </div>
                   <div className="space-y-8">
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center ml-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Focus Pulse (Min)</label>
-                        <span className="text-xs font-black text-indigo-600">{focusDuration}m</span>
-                      </div>
-                      <input type="range" min="1" max="90" value={focusDuration} onChange={e => setFocusDuration(Number(e.target.value))} className="w-full accent-indigo-600 h-2 bg-slate-100 rounded-full appearance-none cursor-pointer" />
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center ml-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Rest Cycle (Min)</label>
-                        <span className="text-xs font-black text-emerald-600">{breakDuration}m</span>
-                      </div>
-                      <input type="range" min="1" max="30" value={breakDuration} onChange={e => setBreakDuration(Number(e.target.value))} className="w-full accent-emerald-500 h-2 bg-slate-100 rounded-full appearance-none cursor-pointer" />
-                    </div>
+                    <div className="space-y-4"><div className="flex justify-between items-center ml-1"><label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Focus Pulse (Min)</label><span className="text-xs font-black text-indigo-600">{focusDuration}m</span></div><input type="range" min="1" max="90" value={focusDuration} onChange={e => setFocusDuration(Number(e.target.value))} className="w-full accent-indigo-600 h-2 bg-slate-100 rounded-full appearance-none cursor-pointer" /></div>
+                    <div className="space-y-4"><div className="flex justify-between items-center ml-1"><label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Rest Cycle (Min)</label><span className="text-xs font-black text-emerald-600">{breakDuration}m</span></div><input type="range" min="1" max="30" value={breakDuration} onChange={e => setBreakDuration(Number(e.target.value))} className="w-full accent-emerald-500 h-2 bg-slate-100 rounded-full appearance-none cursor-pointer" /></div>
                   </div>
-                  <button onClick={() => setShowSettings(false)} className="w-full bg-slate-900 text-white py-7 rounded-[32px] font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-600 transition-all active:scale-95 flex items-center justify-center gap-3">
-                    <RefreshCw size={16} /> Update Params
-                  </button>
+                  <button onClick={() => setShowSettings(false)} className="w-full bg-slate-900 text-white py-7 rounded-[32px] font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-600 transition-all active:scale-95 flex items-center justify-center gap-3"><RefreshCw size={16} /> Update Params</button>
                 </div>
                 <div className="bg-slate-50/80 border border-slate-100 rounded-[48px] p-10 space-y-8">
-                  <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3"><Download size={16} /> Data Operations</h4>
+                  <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">Vault Control</h4>
                   <div className="grid grid-cols-1 gap-5">
-                    <button onClick={handleExportData} className="flex items-center justify-between p-7 bg-white border-2 border-transparent hover:border-indigo-100 rounded-[32px] transition-all group shadow-sm">
-                      <div className="flex items-center gap-5">
-                        <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><Download size={24} /></div>
-                        <div className="text-left"><p className="text-sm font-black text-slate-900">Secure Backup</p><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Export Vault</p></div>
-                      </div>
-                    </button>
-                    <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-between p-7 bg-white border-2 border-transparent hover:border-emerald-100 rounded-[32px] transition-all group shadow-sm">
-                      <div className="flex items-center gap-5">
-                        <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl"><Upload size={24} /></div>
-                        <div className="text-left"><p className="text-sm font-black text-slate-900">Restore Vault</p><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Import JSON</p></div>
-                      </div>
-                      <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleImportData} />
-                    </button>
-                    <div className="h-px bg-slate-200 my-4" />
-                    <button onClick={handleClearAllData} className="w-full bg-rose-50 text-rose-500 border-2 border-rose-100 rounded-[32px] py-7 font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-3 hover:bg-rose-100 transition-all active:scale-95">
-                      <Trash2 size={20} /> Purge Study Data
+                    <button onClick={() => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullState)); const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", `zenith_vault_${new Date().toISOString().split('T')[0]}.json`); dl.click(); }} className="flex items-center justify-between p-7 bg-white border-2 border-transparent hover:border-indigo-100 rounded-[32px] transition-all group shadow-sm">
+                      <div className="flex items-center gap-5"><div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><Download size={24} /></div><div className="text-left"><p className="text-sm font-black text-slate-900">Secure Backup</p><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Export Vault</p></div></div>
                     </button>
                   </div>
                 </div>

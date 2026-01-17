@@ -107,12 +107,7 @@
             opacity: 0.5;
         }
 
-        /* Hover States */
-        body.is-hovering #custom-cursor {
-            opacity: 0;
-            transform: scale(0);
-        }
-
+        body.is-hovering #custom-cursor { opacity: 0; transform: scale(0); }
         body.is-hovering #custom-cursor-follower {
             width: 54px;
             height: 54px;
@@ -120,23 +115,15 @@
             border-color: rgba(99, 102, 241, 0.2);
             opacity: 1;
         }
+        body.is-active #custom-cursor { transform: scale(3); }
+        body.is-active #custom-cursor-follower { transform: scale(0.8) !important; opacity: 0.8; }
 
-        /* Active/Click States */
-        body.is-active #custom-cursor {
-            transform: scale(3);
-        }
-
-        body.is-active #custom-cursor-follower {
-            transform: scale(0.8) !important;
-            opacity: 0.8;
-        }
-
-        /* Seamless Page Transitions */
-        @keyframes pageIn {
+        /* Unified Seamless Page Transitions */
+        @keyframes fluidReveal {
             0% { 
                 opacity: 0; 
-                transform: translateY(30px) scale(0.96); 
-                filter: blur(10px); 
+                transform: translateY(24px) scale(0.985); 
+                filter: blur(8px); 
             }
             100% { 
                 opacity: 1; 
@@ -146,29 +133,26 @@
         }
 
         .page-transition {
-            animation: pageIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-            perspective: 1000px;
+            animation: fluidReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+            transform-origin: top center;
         }
 
-        /* Staggered Entrance Animations */
-        @keyframes cascadeUp {
-            from { opacity: 0; transform: translateY(30px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+        /* Staggered Content Cascade */
+        @keyframes itemReveal {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .stagger-fade-in > * {
+        .stagger-child-reveal > * {
             opacity: 0;
-            animation: cascadeUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            animation: itemReveal 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
         }
 
-        .stagger-fade-in > *:nth-child(1) { animation-delay: 0.05s; }
-        .stagger-fade-in > *:nth-child(2) { animation-delay: 0.1s; }
-        .stagger-fade-in > *:nth-child(3) { animation-delay: 0.15s; }
-        .stagger-fade-in > *:nth-child(4) { animation-delay: 0.2s; }
-        .stagger-fade-in > *:nth-child(5) { animation-delay: 0.25s; }
-        .stagger-fade-in > *:nth-child(6) { animation-delay: 0.3s; }
-        .stagger-fade-in > *:nth-child(7) { animation-delay: 0.35s; }
-        .stagger-fade-in > *:nth-child(8) { animation-delay: 0.4s; }
+        .stagger-child-reveal > *:nth-child(1) { animation-delay: 0.05s; }
+        .stagger-child-reveal > *:nth-child(2) { animation-delay: 0.1s; }
+        .stagger-child-reveal > *:nth-child(3) { animation-delay: 0.15s; }
+        .stagger-child-reveal > *:nth-child(4) { animation-delay: 0.2s; }
+        .stagger-child-reveal > *:nth-child(5) { animation-delay: 0.25s; }
 
         .hover-lift {
             transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease;
@@ -182,15 +166,8 @@
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-10px); }
         }
-        .animate-float {
-            animation: float 4s ease-in-out infinite;
-        }
+        .animate-float { animation: float 4s ease-in-out infinite; }
 
-        .active-nav-glow {
-            box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.3);
-        }
-        
-        /* Glass morphism */
         .glass {
             background: rgba(255, 255, 255, 0.7);
             backdrop-filter: blur(12px);
@@ -198,24 +175,15 @@
             border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
-        a, button, input, select {
-            cursor: none;
-        }
+        a, button, input, select { cursor: none; }
+        .active-squish:active { transform: scale(0.95); }
 
-        /* Subtle squish effect on active */
-        .active-squish:active {
-            transform: scale(0.95);
-        }
-
-        /* Shimmer Animation */
+        /* Smooth Shimmer */
         @keyframes shimmer {
             0% { transform: translateX(-100%); }
             100% { transform: translateX(100%); }
         }
-        .animate-shimmer {
-            position: relative;
-            overflow: hidden;
-        }
+        .animate-shimmer { position: relative; overflow: hidden; }
         .animate-shimmer::after {
             content: '';
             position: absolute;
@@ -223,41 +191,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(
-                90deg,
-                transparent,
-                rgba(255, 255, 255, 0.15),
-                transparent
-            );
-            animation: shimmer 2.5s infinite linear;
-        }
-
-        /* Improved Liquid Progress Fill Animation */
-        @keyframes progressFill {
-            from { width: 0%; }
-        }
-        
-        @keyframes pulseSpark {
-            0%, 100% { transform: scale(1); opacity: 0.5; }
-            50% { transform: scale(1.5); opacity: 1; }
-        }
-
-        .liquid-progress {
-            transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        .progress-bar-fill {
-            animation: progressFill 1.5s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .progress-spark {
-            position: absolute;
-            top: 0;
-            right: 0;
-            height: 100%;
-            width: 4px;
-            filter: blur(2px);
-            animation: pulseSpark 2s infinite ease-in-out;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: shimmer 3s infinite linear;
         }
     </style>
 <script type="importmap">
@@ -280,68 +215,34 @@
     <div id="custom-cursor-follower"></div>
     <div id="root"></div>
 
-    <!-- Explicitly import index.tsx for Vercel/Vite build -->
     <script type="module" src="/index.tsx"></script>
 
     <script>
         const cursor = document.getElementById('custom-cursor');
         const follower = document.getElementById('custom-cursor-follower');
-        
-        // Coordinates
-        let mouseX = 0;
-        let mouseY = 0;
-        let cursorX = 0;
-        let cursorY = 0;
-        let followerX = 0;
-        let followerY = 0;
-
-        // Interactive element tracking
+        let mouseX = 0, mouseY = 0, followerX = 0, followerY = 0;
         const hoverables = 'button, a, input, select, [role="button"], .hover-target';
 
         document.addEventListener('mousemove', (e) => {
             mouseX = e.clientX;
             mouseY = e.clientY;
         });
-
-        document.addEventListener('mousedown', () => {
-            document.body.classList.add('is-active');
-        });
-
-        document.addEventListener('mouseup', () => {
-            document.body.classList.remove('is-active');
-        });
-
-        // Event delegation for hover states
+        document.addEventListener('mousedown', () => document.body.classList.add('is-active'));
+        document.addEventListener('mouseup', () => document.body.classList.remove('is-active'));
         document.addEventListener('mouseover', (e) => {
-            if (e.target.closest(hoverables)) {
-                document.body.classList.add('is-hovering');
-            }
+            if (e.target.closest(hoverables)) document.body.classList.add('is-hovering');
         });
-
         document.addEventListener('mouseout', (e) => {
-            if (e.target.closest(hoverables)) {
-                document.body.classList.remove('is-hovering');
-            }
+            if (e.target.closest(hoverables)) document.body.classList.remove('is-hovering');
         });
 
-        // Animation Loop
         const tick = () => {
-            // Smoothly interpolate the follower position (0.15 is the damping factor)
             followerX += (mouseX - followerX) * 0.15;
             followerY += (mouseY - followerY) * 0.15;
-
-            // Cursor follows strictly
-            cursorX = mouseX;
-            cursorY = mouseY;
-
-            // Apply transforms (centered)
-            cursor.style.transform = `translate3d(${cursorX - 3}px, ${cursorY - 3}px, 0)`;
+            cursor.style.transform = `translate3d(${mouseX - 3}px, ${mouseY - 3}px, 0)`;
             follower.style.transform = `translate3d(${followerX - (follower.offsetWidth / 2)}px, ${followerY - (follower.offsetHeight / 2)}px, 0)`;
-
             requestAnimationFrame(tick);
         };
-
-        // Start animation loop
         tick();
     </script>
 </body>
