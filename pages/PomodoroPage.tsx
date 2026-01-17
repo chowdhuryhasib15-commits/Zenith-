@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Subject, PomodoroLog, AppState } from '../types';
 import { 
@@ -26,7 +27,7 @@ const AMBIENT_PRESETS = [
   { id: 'noise', label: 'White Noise', icon: <Wind size={20} />, ytId: 'nMfPqeZjc2c' }, 
 ];
 
-// High-Fidelity Reactive Visualizer
+// High-Fidelity Reactive Visualizer Component
 const Visualizer = ({ isActive, volume, isMuted, color = "bg-indigo-400" }: { isActive: boolean; volume: number; isMuted: boolean; color?: string }) => {
   const intensity = isMuted ? 0 : volume / 100;
   
@@ -36,7 +37,6 @@ const Visualizer = ({ isActive, volume, isMuted, color = "bg-indigo-400" }: { is
       style={{ '--intensity': intensity } as React.CSSProperties}
     >
       {[...Array(16)].map((_, i) => {
-        // Create distinct physics for different bars
         const seed = (i * 0.13) % 1;
         const duration = 0.4 + (seed * 0.8);
         return (
@@ -48,7 +48,7 @@ const Visualizer = ({ isActive, volume, isMuted, color = "bg-indigo-400" }: { is
               opacity: isActive ? 0.05 + (0.95 * intensity) : 0.1,
               animationDuration: `${duration / (0.5 + intensity)}s`,
               boxShadow: isActive && intensity > 0.5 ? `0 0 15px -2px currentColor` : 'none'
-            }}
+            } as React.CSSProperties}
           />
         );
       })}
@@ -96,6 +96,73 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const ytPlayerRef = useRef<any>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+
+  // Load YouTube IFrame API
+  useEffect(() => {
+    if (!(window as any).YT) {
+      const tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+    }
+  }, []);
+
+  // Initialize/Update Player
+  useEffect(() => {
+    if (!playingYtId) {
+      if (ytPlayerRef.current) {
+        ytPlayerRef.current.destroy();
+        ytPlayerRef.current = null;
+      }
+      return;
+    }
+
+    const initPlayer = () => {
+      ytPlayerRef.current = new (window as any).YT.Player('yt-audio-hub', {
+        height: '0',
+        width: '0',
+        videoId: playingYtId,
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          modestbranding: 1,
+          loop: 1,
+          playlist: playingYtId,
+          origin: window.location.origin,
+          enablejsapi: 1,
+        },
+        events: {
+          onReady: (event: any) => {
+            event.target.setVolume(hubVolume);
+            if (isHubMuted) event.target.mute();
+            else event.target.unMute();
+            event.target.playVideo();
+          },
+        }
+      });
+    };
+
+    if ((window as any).YT && (window as any).YT.Player) {
+      if (ytPlayerRef.current) {
+        ytPlayerRef.current.loadVideoById(playingYtId);
+      } else {
+        initPlayer();
+      }
+    } else {
+      (window as any).onYouTubeIframeAPIReady = initPlayer;
+    }
+  }, [playingYtId]);
+
+  // Real-time Volume/Mute Control
+  useEffect(() => {
+    if (ytPlayerRef.current && ytPlayerRef.current.setVolume) {
+      ytPlayerRef.current.setVolume(hubVolume);
+      if (isHubMuted) ytPlayerRef.current.mute();
+      else ytPlayerRef.current.unMute();
+    }
+  }, [hubVolume, isHubMuted]);
 
   const pomodoroSubjects = useMemo(() => {
     const seen = new Set<string>();
@@ -222,7 +289,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isActive, minutes, seconds, mode, selectedSub, focusDuration]);
 
-  // Audio Hub Helpers
   const handleCustomYtSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -231,7 +297,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
       setPlayingYtId(match[2]);
       setSelectedAmbient('custom');
     } else {
-      alert("Invalid YouTube URL. Please use a full watch URL or share link.");
+      alert("Invalid YouTube URL.");
     }
   };
 
@@ -323,20 +389,8 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
         </div>
       </section>
 
-      {/* Acoustic Hub Layer */}
-      {playingYtId && (
-        <div className="fixed top-2 right-2 w-[1px] h-[1px] opacity-[0.01] pointer-events-none z-[-100] overflow-hidden">
-          <iframe 
-            key={`${playingYtId}-${isHubMuted}`}
-            width="100" 
-            height="100" 
-            src={`https://www.youtube.com/embed/${playingYtId}?autoplay=1&mute=${isHubMuted ? 1 : 0}&loop=1&playlist=${playingYtId}&controls=0&modestbranding=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`} 
-            title="Zenith Acoustic Hub" 
-            frameBorder="0" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          />
-        </div>
-      )}
+      {/* Acoustic Hub Hidden Engine */}
+      <div className="hidden" id="yt-audio-hub" />
 
       {!isActive && (
         <section className="max-w-7xl mx-auto w-full px-4 space-y-12">
@@ -436,7 +490,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                   </div>
                 </div>
                 <div className="lg:col-span-4 bg-slate-900 rounded-[56px] p-10 text-white relative overflow-hidden group flex flex-col justify-between">
-                  {/* Waveform Background Decoration */}
                   <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
                      <svg className="w-full h-full" viewBox="0 0 400 600" preserveAspectRatio="none">
                        <path 
@@ -466,7 +519,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                                <p className="text-sm font-bold truncate max-w-[140px]">{selectedAmbient === 'custom' ? 'Custom Input' : AMBIENT_PRESETS.find(p => p.id === selectedAmbient)?.label}</p>
                              </div>
                            </div>
-                           {/* Enhanced 16-bar Visualizer */}
                            <Visualizer isActive={true} volume={hubVolume} isMuted={isHubMuted} />
                         </div>
                         
@@ -495,7 +547,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                                   onChange={(e) => setHubVolume(Number(e.target.value))}
                                   className={`w-full h-1.5 rounded-full appearance-none cursor-pointer transition-all z-10 ${isHubMuted ? 'bg-rose-900/40 accent-rose-500' : 'bg-white/10 accent-indigo-400 hover:bg-white/20'}`}
                                 />
-                                {/* Track Highlight Overlay */}
                                 <div 
                                   className="absolute left-0 top-[11px] h-1.5 rounded-l-full bg-indigo-500 pointer-events-none transition-all duration-300" 
                                   style={{ width: isHubMuted ? '0%' : `${hubVolume}%`, opacity: 0.5 }}

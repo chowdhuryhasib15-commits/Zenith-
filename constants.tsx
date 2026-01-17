@@ -13,7 +13,12 @@ import {
   CheckCircle2,
   Clock,
   TrendingUp,
-  BrainCircuit
+  BrainCircuit,
+  Smile,
+  Zap,
+  Laugh,
+  Frown,
+  Angry
 } from 'lucide-react';
 
 export const COLORS = [
@@ -44,4 +49,19 @@ export const ICONS = {
   Clock: <Clock size={18} />,
   Trend: <TrendingUp size={18} />,
   AI: <BrainCircuit size={18} />,
+};
+
+export const AVATAR_SEEDS = Array.from({ length: 24 }, (_, i) => `ZenithUser_${i + 1}`);
+
+export const EXPRESSIONS = [
+  { id: 'smiling', label: 'Serene', icon: <Smile size={16} />, params: 'eyes=happy&mouth=smile' },
+  { id: 'confident', label: 'Focused', icon: <Zap size={16} />, params: 'eyes=squint&mouth=serious' },
+  { id: 'funny', label: 'Energetic', icon: <Laugh size={16} />, params: 'eyes=winkWacky&mouth=tongue' },
+  { id: 'nervous', label: 'Analytical', icon: <Frown size={16} />, params: 'eyes=close&mouth=concerned' },
+  { id: 'mad', label: 'Intense', icon: <Angry size={16} />, params: 'eyes=angry&mouth=grimace' },
+];
+
+export const getAvatarUrl = (seed: string, expressionId: string) => {
+  const expr = EXPRESSIONS.find(e => e.id === expressionId) || EXPRESSIONS[0];
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}&${expr.params}`;
 };
