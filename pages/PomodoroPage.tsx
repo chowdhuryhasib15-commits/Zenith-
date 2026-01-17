@@ -10,7 +10,7 @@ import {
   Settings2, CheckCircle2, Flame, Trophy, Clock, Trash2, 
   Download, RefreshCw, Lock, ChevronDown, Volume2, VolumeX,
   TrendingUp, Activity, CloudRain, Music, Wind, Youtube, Disc, ListMusic, ChevronRight, ShieldCheck, 
-  Radio, Volume1, Signal, Zap
+  Radio, Volume1, Signal, Zap, SignalHigh, SignalMedium, SignalLow
 } from 'lucide-react';
 
 interface PomodoroPageProps {
@@ -27,37 +27,45 @@ const AMBIENT_PRESETS = [
   { id: 'noise', label: 'White Noise', icon: <Wind size={20} />, ytId: 'nMfPqeZjc2c' }, 
 ];
 
-// Reactive Visualizer Component
+// Reactive Visualizer Component - Physically tied to volume/signal
 const Visualizer = ({ isActive, volume, isMuted, color = "bg-indigo-400" }: { isActive: boolean; volume: number; isMuted: boolean; color?: string }) => {
-  const actualVolume = isMuted ? 0 : volume;
-  const scale = actualVolume / 100;
+  const intensity = isMuted ? 0 : volume / 100;
   
   return (
-    <div className="flex items-end gap-[3px] h-6 px-1">
-      {[...Array(8)].map((_, i) => (
+    <div 
+      className="flex items-end gap-[3px] h-6 px-1" 
+      style={{ '--intensity': intensity } as React.CSSProperties}
+    >
+      {[...Array(10)].map((_, i) => (
         <div 
           key={i}
-          className={`w-[3px] rounded-full transition-all duration-300 ${color} ${isActive && actualVolume > 0 ? 'animate-visualizer' : 'h-[3px] opacity-20'}`}
+          className={`w-[3px] rounded-full transition-all duration-300 ${color} ${isActive && intensity > 0 ? 'animate-reactive-pomo' : 'h-[3px] opacity-10'}`}
           style={{ 
-            animationDelay: `${i * 0.08}s`,
-            height: isActive && actualVolume > 0 ? `${10 + (Math.random() * 90 * scale)}%` : '3px',
-            animationDuration: `${0.4 + (0.6 * (1 - scale))}s`,
-            opacity: isActive ? 0.2 + (0.8 * scale) : 0.2
+            animationDelay: `${i * 0.05}s`,
+            opacity: isActive ? 0.1 + (0.9 * intensity) : 0.1,
+            animationDuration: `${0.3 + (0.7 * (1 - intensity))}s`
           }}
         />
       ))}
       <style>{`
-        @keyframes visualizer {
-          0%, 100% { transform: scaleY(0.2); }
-          50% { transform: scaleY(1); }
+        @keyframes reactive-pomo {
+          0%, 100% { height: 3px; }
+          50% { height: calc(100% * var(--intensity)); }
         }
-        .animate-visualizer {
-          animation: visualizer 0.6s ease-in-out infinite;
+        .animate-reactive-pomo {
+          animation: reactive-pomo var(--duration, 0.6s) ease-in-out infinite;
           transform-origin: bottom;
         }
       `}</style>
     </div>
   );
+};
+
+const DynamicSignalIcon = ({ volume, isMuted }: { volume: number, isMuted: boolean }) => {
+  if (isMuted || volume === 0) return <VolumeX size={14} className="text-rose-500" />;
+  if (volume > 75) return <SignalHigh size={14} className="text-indigo-400" />;
+  if (volume > 40) return <SignalMedium size={14} className="text-indigo-400/80" />;
+  return <SignalLow size={14} className="text-amber-400" />;
 };
 
 const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs, fullState, onRestore }) => {
@@ -237,6 +245,14 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
+  const signalQuality = useMemo(() => {
+    if (isHubMuted || hubVolume === 0) return "DISCONNECTED";
+    if (hubVolume > 85) return "CRYSTAL CLEAR";
+    if (hubVolume > 60) return "STABLE FEED";
+    if (hubVolume > 30) return "WEAK SIGNAL";
+    return "CRITICAL DEPTH";
+  }, [hubVolume, isHubMuted]);
+
   return (
     <div className={`min-h-[85vh] flex flex-col transition-all duration-1000 ${isActive ? 'items-center justify-center' : 'space-y-12 pb-24'}`}>
       
@@ -277,7 +293,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
           {isActive && <div className={`absolute inset-0 rounded-full blur-[100px] transition-all duration-[2000ms] animate-pulse ${mode === 'focus' ? 'bg-indigo-500/20' : 'bg-emerald-500/20'}`} />}
           <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
             <circle cx="170" cy="170" r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="transparent" className="text-slate-100/50" />
-            <circle cx="170" cy="170" r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="transparent" strokeDasharray={circumference} style={{ strokeDashoffset, transition: 'stroke-dashoffset 1s linear' }} strokeLinecap="round" className={mode === 'focus' ? 'text-indigo-600' : 'text-emerald-500'} />
+            <circle cx="170" cy="170" r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} style={{ transition: 'stroke-dashoffset 1s linear' }} strokeLinecap="round" className={mode === 'focus' ? 'text-indigo-600' : 'text-emerald-500'} />
           </svg>
           <div className="flex flex-col items-center justify-center text-center pointer-events-none z-10">
             {isActive && currentDisplaySubject && <span className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400 mb-4">{currentDisplaySubject.name}</span>}
@@ -306,7 +322,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
       {playingYtId && (
         <div className="fixed top-2 right-2 w-[1px] h-[1px] opacity-[0.01] pointer-events-none z-[-100] overflow-hidden">
           <iframe 
-            key={playingYtId}
+            key={`${playingYtId}-${isHubMuted}`}
             width="100" 
             height="100" 
             src={`https://www.youtube.com/embed/${playingYtId}?autoplay=1&mute=${isHubMuted ? 1 : 0}&loop=1&playlist=${playingYtId}&controls=0&modestbranding=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`} 
@@ -447,8 +463,11 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                             </button>
                             <div className="flex-1 space-y-2">
                               <div className="flex justify-between text-[10px] font-black uppercase text-white/40">
-                                <span className="flex items-center gap-1"><Signal size={10} /> Signal Strentgh</span>
-                                <span className={isHubMuted ? 'text-rose-400' : 'text-indigo-400'}>{isHubMuted ? 'Muted' : `${hubVolume}%`}</span>
+                                <span className="flex items-center gap-1">
+                                  <DynamicSignalIcon volume={hubVolume} isMuted={isHubMuted} />
+                                  Signal Strength
+                                </span>
+                                <span className={isHubMuted ? 'text-rose-400' : 'text-indigo-400'}>{signalQuality}</span>
                               </div>
                               <input 
                                 type="range" 
@@ -510,7 +529,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                   <button onClick={() => setShowSettings(false)} className="w-full bg-slate-900 text-white py-7 rounded-[32px] font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-600 transition-all active:scale-95 flex items-center justify-center gap-3"><RefreshCw size={16} /> Update Params</button>
                 </div>
                 <div className="bg-slate-50/80 border border-slate-100 rounded-[48px] p-10 space-y-8">
-                  <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">Vault Control</h4>
+                  <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-3">Vault Control</h4>
                   <div className="grid grid-cols-1 gap-5">
                     <button onClick={() => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullState)); const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", `zenith_vault_${new Date().toISOString().split('T')[0]}.json`); dl.click(); }} className="flex items-center justify-between p-7 bg-white border-2 border-transparent hover:border-indigo-100 rounded-[32px] transition-all group shadow-sm">
                       <div className="flex items-center gap-5"><div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><Download size={24} /></div><div className="text-left"><p className="text-sm font-black text-slate-900">Secure Backup</p><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Export Vault</p></div></div>
