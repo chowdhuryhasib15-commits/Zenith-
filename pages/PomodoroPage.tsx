@@ -1,14 +1,16 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Subject, PomodoroLog, AppState } from '../types';
 import { 
   XAxis, YAxis, Tooltip, ResponsiveContainer, 
-  CartesianGrid, PieChart, Pie, Cell, AreaChart, Area
+  CartesianGrid, AreaChart, Area
 } from 'recharts';
 import { 
   Play, Pause, X, 
   Settings2, CheckCircle2, Flame, Trophy, Clock, Trash2, 
   Download, RefreshCw, Lock, ChevronDown, Volume2, VolumeX,
-  PieChart as PieIcon, TrendingUp, Activity, CloudRain, Music, Wind, Youtube, Disc, ListMusic, ChevronRight, ShieldCheck
+  TrendingUp, Activity, CloudRain, Music, Wind, Youtube, Disc, ListMusic, ChevronRight, ShieldCheck, 
+  Radio, Volume1, Signal, Zap
 } from 'lucide-react';
 
 interface PomodoroPageProps {
@@ -20,10 +22,43 @@ interface PomodoroPageProps {
 }
 
 const AMBIENT_PRESETS = [
-  { id: 'lofi', label: 'Lo-Fi Focus', icon: <Music size={20} />, ytId: 'jfKfPfyJRdk' }, // Lofi Girl
-  { id: 'rain', label: 'Deep Rain', icon: <CloudRain size={20} />, ytId: 'mPZkdNFkNps' }, // Rain sounds
-  { id: 'noise', label: 'White Noise', icon: <Wind size={20} />, ytId: 'nMfPqeZjc2c' }, // White noise
+  { id: 'lofi', label: 'Lo-Fi Focus', icon: <Music size={20} />, ytId: 'jfKfPfyJRdk' }, 
+  { id: 'rain', label: 'Deep Rain', icon: <CloudRain size={20} />, ytId: 'mPZkdNFkNps' }, 
+  { id: 'noise', label: 'White Noise', icon: <Wind size={20} />, ytId: 'nMfPqeZjc2c' }, 
 ];
+
+// Reactive Visualizer Component
+const Visualizer = ({ isActive, volume, isMuted, color = "bg-indigo-400" }: { isActive: boolean; volume: number; isMuted: boolean; color?: string }) => {
+  const actualVolume = isMuted ? 0 : volume;
+  const scale = actualVolume / 100;
+  
+  return (
+    <div className="flex items-end gap-[3px] h-6 px-1">
+      {[...Array(8)].map((_, i) => (
+        <div 
+          key={i}
+          className={`w-[3px] rounded-full transition-all duration-300 ${color} ${isActive && actualVolume > 0 ? 'animate-visualizer' : 'h-[3px] opacity-20'}`}
+          style={{ 
+            animationDelay: `${i * 0.08}s`,
+            height: isActive && actualVolume > 0 ? `${10 + (Math.random() * 90 * scale)}%` : '3px',
+            animationDuration: `${0.4 + (0.6 * (1 - scale))}s`,
+            opacity: isActive ? 0.2 + (0.8 * scale) : 0.2
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes visualizer {
+          0%, 100% { transform: scaleY(0.2); }
+          50% { transform: scaleY(1); }
+        }
+        .animate-visualizer {
+          animation: visualizer 0.6s ease-in-out infinite;
+          transform-origin: bottom;
+        }
+      `}</style>
+    </div>
+  );
+};
 
 const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs, fullState, onRestore }) => {
   // Timer State
@@ -34,7 +69,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   const [isActive, setIsActive] = useState(false);
   const [selectedSub, setSelectedSub] = useState<string>('');
   const [mode, setMode] = useState<'focus' | 'break'>('focus');
-  const [isMuted, setIsMuted] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [hasTriedToStart, setHasTriedToStart] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -44,6 +78,8 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   const [selectedAmbient, setSelectedAmbient] = useState<string | null>(null);
   const [customYtUrl, setCustomYtUrl] = useState('');
   const [playingYtId, setPlayingYtId] = useState<string | null>(null);
+  const [hubVolume, setHubVolume] = useState(80);
+  const [isHubMuted, setIsHubMuted] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -117,18 +153,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
       return { name: dateStr.split(' ')[0], minutes: total };
     });
   }, [logs]);
-
-  const subjectDistributionData = useMemo(() => {
-    const distribution: Record<string, { value: number, color: string }> = {};
-    logs.forEach(log => {
-      const sub = subjects.find(s => s.id === log.subjectId);
-      if (!sub) return;
-      const normalizedName = sub.name.replace(/\s*(1st|2nd)?\s*Paper/gi, '').trim();
-      if (!distribution[normalizedName]) distribution[normalizedName] = { value: 0, color: sub.color };
-      distribution[normalizedName].value += log.duration;
-    });
-    return Object.entries(distribution).map(([name, data]) => ({ name, value: data.value, color: data.color })).sort((a, b) => b.value - a.value);
-  }, [logs, subjects]);
 
   const startTimer = () => {
     if (!selectedSub) {
@@ -278,18 +302,14 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
         </div>
       </section>
 
-      {/* Acoustic Engine: Persistence Layer */}
+      {/* Acoustic Hub Layer */}
       {playingYtId && (
-        <div 
-          className="fixed top-2 right-2 w-[10px] h-[10px] opacity-[0.02] z-[-50] overflow-hidden rounded-full bg-black shadow-2xl border border-white/10"
-          style={{ transform: 'scale(0.1)', pointerEvents: 'none' }}
-        >
-          {/* Key forces fresh reload on track change to bypass browser autoplay blocks */}
+        <div className="fixed top-2 right-2 w-[1px] h-[1px] opacity-[0.01] pointer-events-none z-[-100] overflow-hidden">
           <iframe 
             key={playingYtId}
             width="100" 
             height="100" 
-            src={`https://www.youtube.com/embed/${playingYtId}?autoplay=1&mute=0&loop=1&playlist=${playingYtId}&controls=0&modestbranding=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`} 
+            src={`https://www.youtube.com/embed/${playingYtId}?autoplay=1&mute=${isHubMuted ? 1 : 0}&loop=1&playlist=${playingYtId}&controls=0&modestbranding=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`} 
             title="Zenith Acoustic Hub" 
             frameBorder="0" 
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -356,10 +376,8 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                         <div className={`p-5 rounded-3xl transition-all ${selectedAmbient === p.id ? 'bg-white/20' : 'bg-slate-50 text-indigo-600 group-hover:scale-110'}`}>{p.icon}</div>
                         <span className="text-xs font-black uppercase tracking-widest">{p.label}</span>
                         {selectedAmbient === p.id && (
-                          <div className="flex gap-1 items-end h-4 mt-2">
-                            <div className="w-1 bg-white/40 rounded-full animate-pulse h-2" />
-                            <div className="w-1 bg-white/60 rounded-full animate-pulse h-4 delay-75" />
-                            <div className="w-1 bg-white/40 rounded-full animate-pulse h-2 delay-150" />
+                          <div className="mt-2 h-4 flex items-center justify-center">
+                            <Visualizer isActive={true} volume={hubVolume} isMuted={isHubMuted} color="bg-white" />
                           </div>
                         )}
                       </button>
@@ -396,32 +414,75 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                     </p>
                   </div>
                 </div>
-                <div className="lg:col-span-4 bg-slate-900 rounded-[56px] p-10 text-white relative overflow-hidden group">
+                <div className="lg:col-span-4 bg-slate-900 rounded-[56px] p-10 text-white relative overflow-hidden group flex flex-col justify-between">
                   <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12 -z-0 scale-125 transition-transform group-hover:rotate-0 duration-[3s]"><Disc size={120} /></div>
-                  <div className="relative z-10 h-full flex flex-col justify-between min-h-[300px]">
-                    <div>
-                      <h3 className="text-4xl font-black tracking-tighter leading-none mb-4">Acoustic <br /><span className="text-indigo-400">Environment.</span></h3>
-                      <p className="text-slate-400 text-sm font-medium leading-relaxed">High-fidelity ambient masking reduces cognitive friction and improves focus retention.</p>
-                    </div>
-                    {selectedAmbient ? (
-                      <div className="p-6 bg-white/10 rounded-[32px] border border-white/10 backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 shadow-2xl">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-indigo-500 rounded-2xl flex items-center justify-center animate-spin duration-[8000ms]"><Disc size={24} /></div>
-                          <div>
-                            <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" /> Live Feed
-                            </p>
-                            <p className="text-sm font-bold truncate max-w-[140px]">{selectedAmbient === 'custom' ? 'Custom Input' : AMBIENT_PRESETS.find(p => p.id === selectedAmbient)?.label}</p>
+                  <div className="relative z-10">
+                    <h3 className="text-4xl font-black tracking-tighter leading-none mb-4">Acoustic <br /><span className="text-indigo-400">Environment.</span></h3>
+                    <p className="text-slate-400 text-sm font-medium leading-relaxed">High-fidelity ambient masking reduces cognitive friction and improves focus retention.</p>
+                  </div>
+
+                  {selectedAmbient ? (
+                    <div className="relative z-10 space-y-6 animate-in fade-in slide-in-from-bottom-4 mt-12">
+                      <div className="p-6 bg-white/10 rounded-[32px] border border-white/10 backdrop-blur-md shadow-2xl">
+                        <div className="flex items-center justify-between mb-6">
+                           <div className="flex items-center gap-4">
+                             <div className="w-12 h-12 bg-indigo-500 rounded-2xl flex items-center justify-center animate-spin duration-[8000ms]"><Radio size={24} /></div>
+                             <div>
+                               <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest flex items-center gap-2">
+                                 <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" /> Live Feed
+                               </p>
+                               <p className="text-sm font-bold truncate max-w-[140px]">{selectedAmbient === 'custom' ? 'Custom Input' : AMBIENT_PRESETS.find(p => p.id === selectedAmbient)?.label}</p>
+                             </div>
+                           </div>
+                           <Visualizer isActive={true} volume={hubVolume} isMuted={isHubMuted} />
+                        </div>
+                        
+                        <div className="space-y-4 pt-4 border-t border-white/10">
+                          <div className="flex items-center gap-4">
+                            <button 
+                              onClick={() => setIsHubMuted(!isHubMuted)}
+                              className={`p-3 rounded-xl transition-all ${isHubMuted ? 'bg-rose-500/20 text-rose-500' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                            >
+                              {isHubMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                            </button>
+                            <div className="flex-1 space-y-2">
+                              <div className="flex justify-between text-[10px] font-black uppercase text-white/40">
+                                <span className="flex items-center gap-1"><Signal size={10} /> Signal Strentgh</span>
+                                <span className={isHubMuted ? 'text-rose-400' : 'text-indigo-400'}>{isHubMuted ? 'Muted' : `${hubVolume}%`}</span>
+                              </div>
+                              <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                value={hubVolume} 
+                                onChange={(e) => setHubVolume(Number(e.target.value))}
+                                className={`w-full h-1.5 rounded-full appearance-none cursor-pointer transition-all ${isHubMuted ? 'bg-rose-900/40 accent-rose-500' : 'bg-white/10 accent-indigo-400 hover:bg-white/20'}`}
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                             <button className="py-3 bg-white/5 hover:bg-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/5 transition-all flex items-center justify-center gap-2">
+                               <Zap size={14} className="text-amber-400" /> Boost
+                             </button>
+                             <button 
+                                onClick={() => { setSelectedAmbient(null); setPlayingYtId(null); }} 
+                                className="py-3 bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-rose-500/20 transition-all flex items-center justify-center gap-2"
+                              >
+                                <X size={14} /> Kill
+                             </button>
                           </div>
                         </div>
-                        <button onClick={() => { setSelectedAmbient(null); setPlayingYtId(null); }} className="w-full mt-6 py-3 bg-white/10 hover:bg-rose-500/20 text-rose-300 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/10 transition-all">Kill Signal</button>
                       </div>
-                    ) : (
-                      <div className="p-6 bg-white/5 rounded-[32px] border border-white/5 text-center italic text-slate-500 text-xs">
-                        Awaiting sonic initiation...
+                    </div>
+                  ) : (
+                    <div className="p-8 bg-white/5 rounded-[32px] border border-white/5 text-center italic text-slate-500 text-xs mt-12 flex flex-col items-center gap-4">
+                      <div className="w-12 h-12 rounded-full border border-dashed border-slate-700 flex items-center justify-center animate-spin duration-[10s]">
+                        <Disc size={20} />
                       </div>
-                    )}
-                  </div>
+                      Awaiting sonic initiation...
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -440,7 +501,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                 <div className="space-y-10">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-[11px] font-black text-indigo-500 uppercase tracking-[0.3em] flex items-center gap-3"><Clock size={16} /> Phase Cycles</h4>
-                    <button onClick={() => setIsMuted(!isMuted)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isMuted ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-600'}`}>{isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}{isMuted ? 'Muted' : 'Audio On'}</button>
+                    <button onClick={() => setIsHubMuted(!isHubMuted)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isHubMuted ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-600'}`}>{isHubMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}{isHubMuted ? 'Muted' : 'Audio On'}</button>
                   </div>
                   <div className="space-y-8">
                     <div className="space-y-4"><div className="flex justify-between items-center ml-1"><label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Focus Pulse (Min)</label><span className="text-xs font-black text-indigo-600">{focusDuration}m</span></div><input type="range" min="1" max="90" value={focusDuration} onChange={e => setFocusDuration(Number(e.target.value))} className="w-full accent-indigo-600 h-2 bg-slate-100 rounded-full appearance-none cursor-pointer" /></div>
