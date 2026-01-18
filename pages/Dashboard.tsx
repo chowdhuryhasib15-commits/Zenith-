@@ -22,74 +22,81 @@ const ZenithIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
   </div>
 );
 
-// Plant Visualizer Component
-export const NeuralGarden = ({ streak, isWilted }: { streak: number; isWilted: boolean }) => {
+// High-Fidelity Plant Visualizer
+export const NeuralGarden = ({ streak, isWilted, scale = 1 }: { streak: number; isWilted: boolean; scale?: number }) => {
   const levels = streak >= 12 ? 5 : streak >= 8 ? 4 : streak >= 4 ? 3 : streak >= 1 ? 2 : 1;
   
   return (
-    <div className="relative w-full h-48 flex items-end justify-center perspective-1000 overflow-hidden">
-      <div className="absolute inset-x-0 bottom-0 h-4 bg-slate-900/10 blur-xl rounded-full scale-x-50 mx-auto" />
-      
-      {/* Soil / Ground */}
-      <div className={`w-32 h-6 rounded-[100%] absolute bottom-2 transition-colors duration-1000 ${isWilted ? 'bg-amber-900/30' : 'bg-slate-200'}`} />
-
-      {/* The Plant */}
-      <div className="relative flex flex-col items-center transition-all duration-1000">
-        {isWilted ? (
-          <div className="flex flex-col items-center animate-in fade-in duration-1000">
-            <div className="w-1.5 h-16 bg-amber-800/40 rounded-full rotate-[25deg] origin-bottom transition-all duration-1000" />
-            <Leaf size={24} className="text-amber-900/30 -rotate-45 -translate-x-6 translate-y-4 opacity-50" />
-            <p className="text-[8px] font-black text-amber-700 uppercase tracking-widest mt-6">Sync Broken</p>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center scale-110">
-             {/* Stage 5: Majestic Bloom */}
-             {levels >= 5 && (
-               <div className="relative animate-bounce duration-[4s] mb-[-6px] z-20">
-                 <Flower2 size={40} className="text-violet-600 drop-shadow-[0_0_12px_rgba(139,92,246,0.6)]" />
-                 <div className="absolute -inset-4 bg-violet-500/10 blur-2xl rounded-full -z-10 animate-pulse" />
-               </div>
-             )}
-             
-             {/* Stage 4: Flowering Shrub */}
-             {levels >= 4 && (
-               <div className="relative flex gap-2 mb-[-4px] z-10 animate-in zoom-in slide-in-from-bottom-4 duration-1000">
-                 <Flower2 size={24} className="text-indigo-400 opacity-60 -rotate-12" />
-                 <Flower2 size={24} className="text-indigo-400 opacity-60 rotate-12" />
-               </div>
-             )}
-
-             {/* Stage 3: Lush Foliage */}
-             {levels >= 3 && (
-               <div className="flex gap-2 animate-in zoom-in slide-in-from-bottom-2 duration-700">
-                  <Leaf size={24} className="text-indigo-400 rotate-45 translate-x-2" />
-                  <Leaf size={24} className="text-indigo-500 -rotate-45 -translate-x-2 translate-y-2" />
-               </div>
-             )}
-
-             {/* Stage 2: Strong Stem */}
-             {levels >= 2 && (
-               <div className="w-2 h-20 bg-gradient-to-t from-slate-200 to-indigo-500 rounded-full shadow-inner relative">
-                  <div className="absolute top-4 -left-5 rotate-[-45deg] scale-90 opacity-80"><Leaf size={18} className="text-indigo-300" /></div>
-                  <div className="absolute top-10 -right-5 rotate-[45deg] scale-90 opacity-80"><Leaf size={18} className="text-indigo-300" /></div>
-               </div>
-             )}
-
-             {/* Stage 1: New Sprout */}
-             {levels === 1 && (
-               <div className="animate-pulse">
-                 <Sprout size={32} className="text-slate-300" />
-               </div>
-             )}
-          </div>
-        )}
+    <div className="relative w-full h-48 flex flex-col justify-end items-center perspective-1000 overflow-visible">
+      {/* UI Labels - Positioned outside of the scaled content to prevent clipping */}
+      <div className="absolute top-0 left-6 z-30 text-left pointer-events-none">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] whitespace-nowrap">Zenith Arboreatum</p>
+        <p className={`text-xl font-black ${isWilted ? 'text-amber-700' : 'text-slate-900'} tracking-tighter whitespace-nowrap`}>
+          {isWilted ? 'Dormant' : levels === 5 ? 'Zenith Bloom' : levels === 4 ? 'Flourishing' : levels === 3 ? 'Resilient' : levels === 2 ? 'Robust Growth' : 'New Sprout'}
+        </p>
       </div>
 
-      <div className="absolute top-4 left-6 text-left">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Zenith Arboreatum</p>
-        <p className={`text-xl font-black ${isWilted ? 'text-amber-700' : 'text-slate-900'} tracking-tighter`}>
-          {isWilted ? 'Dormant' : levels === 5 ? 'Celestial Bloom' : levels === 4 ? 'Flourishing' : levels === 3 ? 'Resilient' : levels === 2 ? 'New Sprout' : 'Dormant'}
-        </p>
+      {/* Scalable Plant Graphics */}
+      <div 
+        className="relative w-full h-full flex items-end justify-center transition-transform duration-1000 origin-bottom"
+        style={{ transform: `scale(${scale})` }}
+      >
+        <div className="absolute inset-x-0 bottom-0 h-4 bg-slate-900/10 blur-xl rounded-full scale-x-50 mx-auto" />
+        
+        {/* Soil / Ground */}
+        <div className={`w-32 h-6 rounded-[100%] absolute bottom-2 transition-all duration-1000 ${isWilted ? 'bg-amber-900/30' : 'bg-slate-200 shadow-inner'}`} />
+
+        {/* The Plant */}
+        <div className="relative flex flex-col items-center transition-all duration-1000">
+          {isWilted ? (
+            <div className="flex flex-col items-center animate-in fade-in duration-1000 mb-2">
+              <div className="w-1.5 h-16 bg-amber-800/40 rounded-full rotate-[25deg] origin-bottom transition-all duration-1000 shadow-sm" />
+              <Leaf size={24} className="text-amber-900/30 -rotate-45 -translate-x-6 translate-y-4 opacity-50" />
+              <p className="text-[8px] font-black text-amber-700 uppercase tracking-widest mt-6 bg-amber-50 px-2 py-0.5 rounded-full">Growth Halted</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center mb-2">
+               {/* Stage 5: Majestic Bloom */}
+               {levels >= 5 && (
+                 <div className="relative animate-bounce duration-[4s] mb-[-6px] z-20">
+                   <Flower2 size={40} className="text-violet-600 drop-shadow-[0_0_12px_rgba(139,92,246,0.6)]" />
+                   <div className="absolute -inset-4 bg-violet-500/10 blur-2xl rounded-full -z-10 animate-pulse" />
+                 </div>
+               )}
+               
+               {/* Stage 4: Flowering Shrub */}
+               {levels >= 4 && (
+                 <div className="relative flex gap-2 mb-[-4px] z-10 animate-in zoom-in slide-in-from-bottom-4 duration-1000">
+                   <Flower2 size={24} className="text-indigo-400 opacity-60 -rotate-12" />
+                   <Flower2 size={24} className="text-indigo-400 opacity-60 rotate-12" />
+                 </div>
+               )}
+
+               {/* Stage 3: Lush Foliage */}
+               {levels >= 3 && (
+                 <div className="flex gap-2 animate-in zoom-in slide-in-from-bottom-2 duration-700">
+                    <Leaf size={24} className="text-indigo-400 rotate-45 translate-x-2" />
+                    <Leaf size={24} className="text-indigo-500 -rotate-45 -translate-x-2 translate-y-2" />
+                 </div>
+               )}
+
+               {/* Stage 2: Strong Stem */}
+               {levels >= 2 && (
+                 <div className="w-2 h-20 bg-gradient-to-t from-slate-200 to-indigo-500 rounded-full shadow-inner relative">
+                    <div className="absolute top-4 -left-5 rotate-[-45deg] scale-90 opacity-80"><Leaf size={18} className="text-indigo-300" /></div>
+                    <div className="absolute top-10 -right-5 rotate-[45deg] scale-90 opacity-80"><Leaf size={18} className="text-indigo-300" /></div>
+                 </div>
+               )}
+
+               {/* Stage 1: New Sprout */}
+               {levels === 1 && (
+                 <div className="animate-pulse mb-2">
+                   <Sprout size={36} className="text-indigo-500 drop-shadow-[0_0_8px_rgba(99,102,241,0.3)]" />
+                 </div>
+               )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -202,15 +209,9 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
   // Garden logic: check if goal was hit today
   const isWilted = useMemo(() => {
     if (!state.goalLastUpdated) return false;
-    const last = new Date(state.goalLastUpdated);
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0,0,0,0);
-    // This is simple: if they haven't achieved goal today, it's not "wilted" yet, 
-    // but if yesterday was missed, it would be dormant/reset.
-    // For visual, we use the gardenStreak.
+    // Streak logic already handled in App.tsx reset, but visual dormancy check:
     return state.gardenStreak === 0 && !!state.dailyFocusGoal;
-  }, [state.gardenStreak, state.dailyFocusGoal, state.goalLastUpdated]);
+  }, [state.gardenStreak, state.dailyFocusGoal]);
 
   const radius = 72;
   const strokeWidth = 14;
@@ -288,7 +289,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
         <div className="lg:col-span-4 bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm flex flex-col justify-between items-center text-center relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-bl-full -z-0 opacity-40 transition-transform group-hover:scale-110 duration-700" />
           
-          <button onClick={() => onNavigate('garden')} className="w-full text-left flex flex-col items-center">
+          <button onClick={() => onNavigate('garden')} className="w-full text-left flex flex-col items-center group/garden hover:opacity-90 transition-opacity">
             <NeuralGarden streak={state.gardenStreak} isWilted={isWilted} />
             <div className="mt-4 px-6 py-4 bg-slate-50/50 rounded-3xl border border-slate-100 w-full flex items-center gap-4 group/goal">
                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover/goal:scale-110 ${state.hasAchievedGoalToday ? 'bg-emerald-500 text-white' : 'bg-white text-slate-300'}`}>
@@ -300,7 +301,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
                     {state.dailyFocusGoal || "Choose focus goal..."}
                   </p>
                </div>
-               <ChevronRight size={16} className="text-slate-300" />
+               <ChevronRight size={16} className="text-slate-300 group-hover/garden:translate-x-1 transition-transform" />
             </div>
           </button>
 

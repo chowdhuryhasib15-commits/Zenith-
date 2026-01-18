@@ -76,6 +76,11 @@ export interface StudyTask {
   estimatedTime: string;
 }
 
+export interface GardenObjective {
+  id: string;
+  label: string;
+}
+
 export interface AppState {
   user?: User;
   subjects: Subject[];
@@ -94,4 +99,5 @@ export interface AppState {
   goalLastUpdated?: string;
   hasAchievedGoalToday: boolean;
   gardenStreak: number;
+  gardenObjectives: GardenObjective[];
 }

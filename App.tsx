@@ -24,7 +24,14 @@ const INITIAL_STATE: AppState = {
   syncStatus: 'local-only',
   customExamTypes: ['Semester Final', 'Midterm', 'Quiz', 'Mock Test'],
   hasAchievedGoalToday: false,
-  gardenStreak: 0
+  gardenStreak: 0,
+  gardenObjectives: [
+    { id: 'focus_4h', label: 'Achieve 4 Hours of Deep Work' },
+    { id: 'rev_sync', label: 'Complete All Pending Revision Syncs' },
+    { id: 'exam_prep', label: 'Master 3 Chapters for Upcoming Exam' },
+    { id: 'course_mastery', label: 'Finish 2 Course Lectures' },
+    { id: 'habit_streak', label: 'Hit All Today\'s Routine Goals' },
+  ]
 };
 
 const App: React.FC = () => {
@@ -33,17 +40,18 @@ const App: React.FC = () => {
     const saved = localStorage.getItem(STORAGE_KEY);
     const parsed = saved ? JSON.parse(saved) : INITIAL_STATE;
     
+    // Fallback for existing users who don't have gardenObjectives in their saved state
+    if (!parsed.gardenObjectives) {
+      parsed.gardenObjectives = INITIAL_STATE.gardenObjectives;
+    }
+
     // Check if it's a new day to reset today's goal achievement
     const today = new Date().toISOString().split('T')[0];
     if (parsed.goalLastUpdated !== today) {
-      // If they didn't achieve the goal yesterday, wilt/reset streak?
-      // For simplicity, we just reset the "achieved today" flag.
-      // In a real app, we'd check if yesterday was achieved to maintain streak.
       return { 
         ...parsed, 
         hasAchievedGoalToday: false, 
         goalLastUpdated: today,
-        // Optional: If goal wasn't hit yesterday, streak = 0
       };
     }
     return parsed;

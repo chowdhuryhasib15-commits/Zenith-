@@ -3,14 +3,14 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Subject, PomodoroLog, AppState } from '../types';
 import { 
   XAxis, YAxis, Tooltip, ResponsiveContainer, 
-  CartesianGrid, AreaChart, Area
+  CartesianGrid, AreaChart, Area, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { 
   Play, Pause, X, 
   Settings2, CheckCircle2, Flame, Trophy, Clock, Trash2, 
   Download, RefreshCw, Lock, ChevronDown, Volume2, VolumeX,
   TrendingUp, Activity, CloudRain, Music, Wind, Youtube, Disc, ListMusic, ChevronRight, ShieldCheck, 
-  Radio, Volume1, Signal, Zap, SignalHigh, SignalMedium, SignalLow, Waves
+  Radio, Volume1, Signal, Zap, SignalHigh, SignalMedium, SignalLow, Waves, BarChart3
 } from 'lucide-react';
 
 interface PomodoroPageProps {
@@ -97,7 +97,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const ytPlayerRef = useRef<any>(null);
-  const playerContainerRef = useRef<HTMLDivElement>(null);
 
   // Load YouTube IFrame API
   useEffect(() => {
@@ -233,6 +232,20 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
       return { name: dateStr.split(' ')[0], minutes: total };
     });
   }, [logs]);
+
+  const subjectDistributionData = useMemo(() => {
+    const map: Record<string, { minutes: number; color: string }> = {};
+    logs.forEach(log => {
+      const sub = subjects.find(s => s.id === log.subjectId);
+      const name = sub?.name || 'Deleted';
+      const color = sub?.color || '#cbd5e1';
+      if (!map[name]) map[name] = { minutes: 0, color };
+      map[name].minutes += log.duration;
+    });
+    return Object.entries(map)
+      .map(([name, data]) => ({ name, minutes: data.minutes, color: data.color }))
+      .sort((a, b) => b.minutes - a.minutes);
+  }, [logs, subjects]);
 
   const startTimer = () => {
     if (!selectedSub) {
@@ -397,7 +410,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
           
           <div className="flex gap-4 p-2 bg-slate-100/50 w-fit mx-auto rounded-[24px] border border-slate-200 shadow-inner">
             <button onClick={() => setActiveTab('stats')} className={`flex items-center gap-2 px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'stats' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
-              <Activity size={16} /> Performance
+              <BarChart3 size={16} /> Analytics
             </button>
             <button onClick={() => setActiveTab('audio')} className={`flex items-center gap-2 px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'audio' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
               <Disc size={16} /> Acoustic Hub
@@ -406,35 +419,117 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
 
           <div className="stagger-child-reveal">
             {activeTab === 'stats' ? (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                <div className="lg:col-span-8 bg-white p-10 rounded-[56px] border border-slate-100 shadow-sm h-[400px]">
-                  <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-4"><div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><Activity size={24} /></div><div><h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Focus Velocity</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Rolling 7-Day Performance</p></div></div>
-                    <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest"><TrendingUp size={14} /> Active</div>
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  <div className="lg:col-span-8 bg-white p-10 rounded-[56px] border border-slate-100 shadow-sm h-[400px]">
+                    <div className="flex items-center justify-between mb-8">
+                      <div className="flex items-center gap-4"><div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><Activity size={24} /></div><div><h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Focus Velocity</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Rolling 7-Day Performance</p></div></div>
+                      <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest"><TrendingUp size={14} /> Active</div>
+                    </div>
+                    <div className="h-[280px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={dailyData}>
+                          <defs><linearGradient id="pomoGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#94a3b8' }} />
+                          <YAxis hide />
+                          <Tooltip cursor={{ stroke: '#6366f1', strokeWidth: 2, strokeDasharray: '5 5' }} contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)' }} />
+                          <Area type="monotone" dataKey="minutes" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#pomoGrad)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
-                  <div className="h-[280px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={dailyData}>
-                        <defs><linearGradient id="pomoGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#94a3b8' }} />
-                        <YAxis hide />
-                        <Tooltip cursor={{ stroke: '#6366f1', strokeWidth: 2, strokeDasharray: '5 5' }} contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)' }} />
-                        <Area type="monotone" dataKey="minutes" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#pomoGrad)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                  <div className="lg:col-span-4 grid grid-cols-1 gap-6">
+                    <div className="bg-slate-900 text-white p-8 rounded-[40px] flex items-center gap-6 shadow-2xl relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-125 transition-transform duration-700"><Flame size={120} /></div>
+                      <Flame className="text-orange-500 relative z-10" size={32} />
+                      <div className="relative z-10"><p className="text-4xl font-black tabular-nums leading-none tracking-tighter">{streakCount}</p><p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-2">Daily Streak</p></div>
+                    </div>
+                    <div className="bg-indigo-600 text-white p-8 rounded-[40px] flex items-center gap-6 shadow-xl relative overflow-hidden group">
+                      <div className="absolute bottom-0 right-0 p-12 opacity-10 group-hover:rotate-12 transition-transform duration-700"><Trophy size={120} /></div>
+                      <Trophy className="text-indigo-200 relative z-10" size={32} />
+                      <div className="relative z-10"><p className="text-4xl font-black tabular-nums leading-none tracking-tighter">{Math.round(totalFocusMinutes / 60)}h</p><p className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.3em] mt-2">Total Focus</p></div>
+                    </div>
                   </div>
                 </div>
-                <div className="lg:col-span-4 grid grid-cols-1 gap-6">
-                  <div className="bg-slate-900 text-white p-10 rounded-[48px] flex items-center gap-6 shadow-2xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-125 transition-transform duration-700"><Flame size={120} /></div>
-                    <Flame className="text-orange-500 relative z-10" size={32} />
-                    <div className="relative z-10"><p className="text-5xl font-black tabular-nums leading-none tracking-tighter">{streakCount}</p><p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-2">Daily Streak</p></div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  <div className="lg:col-span-4 bg-white p-10 rounded-[56px] border border-slate-100 shadow-sm min-h-[400px]">
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8">Subject Distribution</h3>
+                    <div className="h-64">
+                      {subjectDistributionData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={subjectDistributionData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={80}
+                              paddingAngle={5}
+                              dataKey="minutes"
+                            >
+                              {subjectDistributionData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
+                              formatter={(value: number) => `${value} min`}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4">
+                           <PieChart className="opacity-20" size={48} />
+                           <p className="text-[10px] font-black uppercase tracking-widest">No Distribution Data</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      {subjectDistributionData.slice(0, 3).map((item, i) => (
+                        <div key={i} className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
+                           <div className="flex items-center gap-2">
+                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                             <span className="text-slate-500 truncate max-w-[100px]">{item.name}</span>
+                           </div>
+                           <span className="text-slate-900">{item.minutes}m</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="bg-indigo-600 text-white p-10 rounded-[48px] flex items-center gap-6 shadow-xl relative overflow-hidden group">
-                    <div className="absolute bottom-0 right-0 p-12 opacity-10 group-hover:rotate-12 transition-transform duration-700"><Trophy size={120} /></div>
-                    <Trophy className="text-indigo-200 relative z-10" size={32} />
-                    <div className="relative z-10"><p className="text-5xl font-black tabular-nums leading-none tracking-tighter">{Math.round(totalFocusMinutes / 60)}h</p><p className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.3em] mt-2">Total Focus</p></div>
+
+                  <div className="lg:col-span-8 bg-white p-10 rounded-[56px] border border-slate-100 shadow-sm">
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8">Detailed Breakdown</h3>
+                    <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-4">
+                       {subjectDistributionData.map((item, i) => {
+                         const percentage = Math.round((item.minutes / totalFocusMinutes) * 100);
+                         return (
+                           <div key={i} className="group">
+                             <div className="flex justify-between items-center mb-2">
+                               <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-[10px]" style={{ backgroundColor: item.color }}>
+                                    {item.name.charAt(0)}
+                                  </div>
+                                  <span className="text-sm font-bold text-slate-700">{item.name}</span>
+                               </div>
+                               <div className="text-right">
+                                  <span className="text-xs font-black text-slate-900">{item.minutes}m</span>
+                                  <span className="text-[10px] font-bold text-slate-400 block">{percentage}%</span>
+                               </div>
+                             </div>
+                             <div className="w-full bg-slate-50 h-2 rounded-full overflow-hidden">
+                                <div className="h-full transition-all duration-1000" style={{ width: `${percentage}%`, backgroundColor: item.color }} />
+                             </div>
+                           </div>
+                         );
+                       })}
+                       {subjectDistributionData.length === 0 && (
+                         <div className="py-20 text-center text-slate-400 italic font-black uppercase tracking-[0.2em] opacity-40">
+                           Laboratory Buffer Clear
+                         </div>
+                       )}
+                    </div>
                   </div>
                 </div>
               </div>
