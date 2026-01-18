@@ -88,5 +88,10 @@ export interface AppState {
   syncStatus: SyncStatus;
   lastSyncedAt?: string;
   currentStudyPlan?: StudyTask[];
-  customExamTypes: string[]; // Track user-created exam categories
+  customExamTypes: string[]; 
+  // Garden State
+  dailyFocusGoal?: string;
+  goalLastUpdated?: string;
+  hasAchievedGoalToday: boolean;
+  gardenStreak: number;
 }

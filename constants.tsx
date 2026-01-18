@@ -19,7 +19,8 @@ import {
   Laugh,
   Frown,
   Angry,
-  CalendarCheck
+  CalendarCheck,
+  Sprout
 } from 'lucide-react';
 
 export const COLORS = [
@@ -37,6 +38,7 @@ export const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
   { id: 'subjects', label: 'Subjects', icon: <BookOpen size={20} /> },
   { id: 'revision', label: 'Revision', icon: <RotateCcw size={20} /> },
+  { id: 'garden', label: 'Zenith Garden', icon: <Sprout size={20} /> },
   { id: 'courses', label: 'Courses', icon: <PlayCircle size={20} /> },
   { id: 'pomodoro', label: 'Pomodoro', icon: <Timer size={20} /> },
   { id: 'goals', label: 'Goals', icon: <Calendar size={20} /> },

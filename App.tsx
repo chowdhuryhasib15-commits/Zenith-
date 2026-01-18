@@ -9,6 +9,7 @@ import PomodoroPage from './pages/PomodoroPage';
 import GoalsPage from './pages/GoalsPage';
 import ExamsPage from './pages/ExamsPage';
 import CoursesPage from './pages/CoursesPage';
+import GardenPage from './pages/GardenPage';
 import AuthOverlay from './components/AuthOverlay';
 
 const STORAGE_KEY = 'zenith_app_data_v2';
@@ -21,14 +22,31 @@ const INITIAL_STATE: AppState = {
   courses: [],
   theme: 'light',
   syncStatus: 'local-only',
-  customExamTypes: ['Semester Final', 'Midterm', 'Quiz', 'Mock Test']
+  customExamTypes: ['Semester Final', 'Midterm', 'Quiz', 'Mock Test'],
+  hasAchievedGoalToday: false,
+  gardenStreak: 0
 };
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [state, setState] = useState<AppState>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : INITIAL_STATE;
+    const parsed = saved ? JSON.parse(saved) : INITIAL_STATE;
+    
+    // Check if it's a new day to reset today's goal achievement
+    const today = new Date().toISOString().split('T')[0];
+    if (parsed.goalLastUpdated !== today) {
+      // If they didn't achieve the goal yesterday, wilt/reset streak?
+      // For simplicity, we just reset the "achieved today" flag.
+      // In a real app, we'd check if yesterday was achieved to maintain streak.
+      return { 
+        ...parsed, 
+        hasAchievedGoalToday: false, 
+        goalLastUpdated: today,
+        // Optional: If goal wasn't hit yesterday, streak = 0
+      };
+    }
+    return parsed;
   });
 
   useEffect(() => {
@@ -108,6 +126,8 @@ const App: React.FC = () => {
 
   const setStudyPlan = (plan: StudyTask[]) => setState(prev => ({ ...prev, currentStudyPlan: plan }));
 
+  const updateGarden = (updates: Partial<AppState>) => setState(prev => ({ ...prev, ...updates }));
+
   const onRestore = (newState: AppState) => {
     setState({ ...newState, syncStatus: 'synced', lastSyncedAt: new Date().toISOString() });
   };
@@ -130,6 +150,7 @@ const App: React.FC = () => {
           onUpdateExam={updateExam}
         />
       );
+      case 'garden': return <GardenPage state={state} onUpdate={updateGarden} />;
       default: return <Dashboard state={state} onNavigate={setActiveTab} onUpdateDeadline={setSyllabusDeadline} onSetStudyPlan={setStudyPlan} />;
     }
   };

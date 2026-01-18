@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { AppState, Exam, Subject, StudyTask } from "../types";
+import { AppState, Exam, Subject, StudyTask, User } from "../types";
 
 const cleanJson = (text: string) => {
   return text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -110,6 +110,46 @@ export const getStudyInsights = async (state: AppState): Promise<string[]> => {
   } catch (error) {
     console.error("Gemini Insight Error:", error);
     return fallbacks;
+  }
+};
+
+export const getDynamicGreeting = async (user: User): Promise<string> => {
+  const hour = new Date().getHours();
+  let timeContext = "";
+  if (hour >= 5 && hour < 12) timeContext = "morning";
+  else if (hour >= 12 && hour < 17) timeContext = "afternoon";
+  else if (hour >= 17 && hour < 22) timeContext = "evening";
+  else timeContext = "late night";
+
+  const fallbacks: Record<string, string> = {
+    morning: `Morning, ${user.name.split(' ')[0]}. New peaks await.`,
+    afternoon: `Focus peak reached, ${user.name.split(' ')[0]}.`,
+    evening: `Wrapping up the conquest, ${user.name.split(' ')[0]}?`,
+    "late night": `Late night grind, Zenith? Clarity in silence.`
+  };
+
+  if (!process.env.API_KEY || process.env.API_KEY === "undefined") return fallbacks[timeContext];
+
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const prompt = `
+      Generate a short, ultra-premium, cool greeting (max 8 words) for a study app called Zenith.
+      The user is ${user.name}, studying ${user.education || 'Academics'}.
+      Current time phase: ${timeContext}. 
+      Examples: "Morning, Manager", "The night grind brings mastery, Zenith."
+      Return only the text.
+    `;
+    const response = await ai.models.generateContent({ 
+      model: 'gemini-3-flash-preview', 
+      contents: prompt,
+      config: {
+        temperature: 0.9,
+        topP: 0.95
+      }
+    });
+    return response.text?.trim() || fallbacks[timeContext];
+  } catch (error) {
+    return fallbacks[timeContext];
   }
 };
 
