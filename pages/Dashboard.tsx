@@ -1,14 +1,15 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { AppState, Subject, Chapter } from '../types';
+import { AppState, Subject, Chapter, StudyTask } from '../types';
 import { ICONS } from '../constants';
-import { getStudyInsights } from '../services/geminiService';
-import { Timer, Edit2, X, AlertCircle, Zap, Brain, ChevronRight, Sparkles, GraduationCap, UserCircle, Download, ShieldCheck } from 'lucide-react';
+import { getStudyInsights, getDailyStudyPlan } from '../services/geminiService';
+import { Timer, Edit2, X, AlertCircle, Zap, Brain, ChevronRight, Sparkles, GraduationCap, UserCircle, Download, ShieldCheck, RefreshCw, ListTodo, Clock } from 'lucide-react';
 
 interface DashboardProps {
   state: AppState;
   onNavigate: (id: string) => void;
   onUpdateDeadline: (date: string) => void;
+  onSetStudyPlan: (plan: StudyTask[]) => void;
 }
 
 const ZenithIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
@@ -23,9 +24,10 @@ const ZenithIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
 
 const REVISION_INTERVALS = [1, 3, 7, 14, 30];
 
-const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadline }) => {
+const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadline, onSetStudyPlan }) => {
   const [insights, setInsights] = useState<string[]>([]);
   const [loadingInsights, setLoadingInsights] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState(false);
   const [isEditingDeadline, setIsEditingDeadline] = useState(false);
   const [tempDeadline, setTempDeadline] = useState(state.syllabusDeadline || '');
   const [timeLeft, setTimeLeft] = useState<{ mo: number; d: number; h: number } | null>(null);
@@ -38,7 +40,20 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
       setLoadingInsights(false);
     };
     fetchInsights();
-  }, [state.pomodoroLogs.length, state.results.length]);
+  }, [state.pomodoroLogs.length, state.exams.length]);
+
+  const fetchDailyPlan = async () => {
+    setLoadingPlan(true);
+    const plan = await getDailyStudyPlan(state);
+    onSetStudyPlan(plan);
+    setLoadingPlan(false);
+  };
+
+  useEffect(() => {
+    if (!state.currentStudyPlan || state.currentStudyPlan.length === 0) {
+      fetchDailyPlan();
+    }
+  }, []);
 
   useEffect(() => {
     if (!state.syllabusDeadline) {
@@ -98,7 +113,9 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
   const completedChapters = state.subjects.reduce((acc, s) => acc + s.chapters.filter(c => c.isCompleted).length, 0);
   const progressPercent = totalChapters === 0 ? 0 : Math.round((completedChapters / totalChapters) * 100);
   const totalFocusMinutes = state.pomodoroLogs.reduce((acc, l) => acc + l.duration, 0);
-  const averageResult = state.results.length === 0 ? 0 : Math.round((state.results.reduce((acc, r) => acc + (r.obtainedMarks / r.totalMarks), 0) / state.results.length) * 100);
+  
+  const gradedExams = state.exams.filter(e => e.isGraded);
+  const averageResult = gradedExams.length === 0 ? 0 : Math.round((gradedExams.reduce((acc, r) => acc + ((r.obtainedMarks || 0) / (r.totalMarks || 1)), 0) / gradedExams.length) * 100);
 
   const radius = 72;
   const strokeWidth = 14;
@@ -113,8 +130,8 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
                <ZenithIcon className="w-6 h-6" />
             </div>
             <div>
-               <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest">Global Progress</h2>
-               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Academic Trajectory Analysis</p>
+               <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest">Neural Dashboard</h2>
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Real-time Cognitive Tracking</p>
             </div>
          </div>
          <div className="flex items-center gap-6">
@@ -137,9 +154,9 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
           <div className="relative z-10">
             <div className="mb-6 max-w-2xl group/quote border-l-4 border-indigo-100 pl-5 py-1">
               <p className="text-[11px] font-medium text-slate-400 italic leading-relaxed">
-                "Success is not final, failure is not fatal: it is the courage to continue that counts."
+                "Precision is the foundation of mastery. Every cycle of study reconfigures your future."
               </p>
-              <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mt-2 opacity-60">— Winston Churchill</p>
+              <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mt-2 opacity-60">— Zenith Protocol</p>
             </div>
             <div className="flex items-center gap-6 mb-2">
                <div className="relative shrink-0">
@@ -152,7 +169,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
                     <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 rounded-full text-[10px] font-black text-indigo-600 uppercase tracking-wider"><GraduationCap size={12} /> {state.user?.education || 'Student'}</div>
                     <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-wider"><UserCircle size={12} /> {state.user?.age || '--'} Years</div>
                  </div>
-                 <p className="text-sm text-slate-500 font-medium mt-3">Achievement Score: <span className="text-indigo-600 font-bold">{progressPercent}% Mastery</span></p>
+                 <p className="text-sm text-slate-500 font-medium mt-3">Overall Progress: <span className="text-indigo-600 font-bold">{progressPercent}% Locked</span></p>
                </div>
             </div>
           </div>
@@ -165,13 +182,13 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
                <div className="text-right">{timeLeft && <div className="flex flex-col items-end"><p className="text-xl font-black leading-none">{timeLeft.mo}M {timeLeft.d}D</p><p className="text-[9px] text-slate-500 uppercase font-black mt-1">Countdown</p></div>}</div>
             </div>
             <button onClick={() => onNavigate('revision')} className={`rounded-[32px] p-6 flex items-center justify-between transition-all hover:scale-[1.02] active:scale-95 ${revisionQueue.length > 0 ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'bg-slate-50 border border-slate-100 text-slate-400'}`}>
-               <div className="flex items-center gap-4"><div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${revisionQueue.length > 0 ? 'bg-white/20 shadow-inner' : 'bg-slate-200'}`}><Zap size={20} /></div><div className="text-left"><p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">Spaced Repetition</p><p className="text-sm font-black mt-1">{revisionQueue.length > 0 ? `${revisionQueue.length} Due` : 'Optimal'}</p></div></div><ChevronRight size={20} className="opacity-40" /></button>
+               <div className="flex items-center gap-4"><div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${revisionQueue.length > 0 ? 'bg-white/20 shadow-inner' : 'bg-slate-200'}`}><Zap size={20} /></div><div className="text-left"><p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">Memory Sync</p><p className="text-sm font-black mt-1">{revisionQueue.length > 0 ? `${revisionQueue.length} Due` : 'Optimized'}</p></div></div><ChevronRight size={20} className="opacity-40" /></button>
           </div>
         </div>
 
         <div className="lg:col-span-4 bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm flex flex-col justify-between items-center text-center relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-bl-full -z-0 opacity-40 transition-transform group-hover:scale-110 duration-700" />
-          <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 relative z-10">Academic Syllabus</h3>
+          <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 relative z-10">Academic Mastery</h3>
           <div className="relative w-44 h-44 flex items-center justify-center my-6 z-10">
             <svg viewBox="0 0 160 160" className="absolute inset-0 w-full h-full -rotate-90">
               <defs><linearGradient id="circle_grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#6366f1" /><stop offset="100%" stopColor="#8b5cf6" /></linearGradient></defs>
@@ -187,14 +204,63 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
         </div>
       </section>
 
+      {/* AI STUDY PLAN SECTION */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 stagger-child-reveal" style={{ animationDelay: '0.1s' }}>
+        <div className="lg:col-span-12 bg-white rounded-[48px] border border-slate-100 shadow-sm p-10 overflow-hidden relative group">
+          <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-[3s]"><Brain size={120} className="text-indigo-600" /></div>
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 relative z-10">
+             <div className="flex items-center gap-5">
+                <div className="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-100 animate-float"><ListTodo size={28} /></div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">Daily Neural Objectives</h3>
+                  <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] mt-1">AI-Powered High-Priority Tasks</p>
+                </div>
+             </div>
+             <button onClick={fetchDailyPlan} disabled={loadingPlan} className="flex items-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-3xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 transition-all active:scale-95 shadow-lg">
+                {loadingPlan ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16} />} 
+                Regenerate Plan
+             </button>
+          </div>
+
+          {loadingPlan ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
+               {[1, 2, 3, 4].map(i => <div key={i} className="h-40 bg-slate-50 rounded-[32px] border border-slate-100" />)}
+            </div>
+          ) : state.currentStudyPlan && state.currentStudyPlan.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+               {state.currentStudyPlan.map((task) => (
+                 <div key={task.id} className="bg-slate-50/50 hover:bg-white p-6 rounded-[32px] border border-transparent hover:border-indigo-100 transition-all hover:shadow-xl hover:shadow-indigo-100/20 group/task">
+                    <div className="flex justify-between items-start mb-4">
+                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${task.priority === 'Critical' ? 'bg-rose-100 text-rose-600' : task.priority === 'Focus' ? 'bg-indigo-100 text-indigo-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                          {task.priority}
+                       </span>
+                       <div className="flex items-center gap-1.5 text-slate-400 group-hover/task:text-indigo-500 transition-colors">
+                          <Clock size={12} />
+                          <span className="text-[10px] font-black">{task.estimatedTime}</span>
+                       </div>
+                    </div>
+                    <p className="text-sm font-bold text-slate-700 leading-relaxed mb-4">{task.task}</p>
+                    <button className="w-full py-3 bg-white border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-all">Mark Ready</button>
+                 </div>
+               ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 bg-slate-50/50 rounded-[40px] border-4 border-dashed border-slate-100">
+               <p className="text-sm font-black text-slate-300 uppercase tracking-[0.4em] italic">No active protocol</p>
+            </div>
+          )}
+        </div>
+      </section>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 stagger-child-reveal" style={{ animationDelay: '0.2s' }}>
         <div className="lg:col-span-7 bg-white p-10 rounded-[48px] border border-slate-100 shadow-sm">
-          <div className="flex items-center justify-between mb-8"><div className="flex items-center gap-4"><div className="p-3 bg-violet-100 text-violet-600 rounded-2xl shadow-sm"><Brain size={24} /></div><div><h3 className="text-xl font-black text-slate-900 tracking-tight">Revision Queue</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Schedule</p></div></div><button onClick={() => onNavigate('revision')} className="text-xs font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 transition-colors">Lab</button></div>
+          <div className="flex items-center justify-between mb-8"><div className="flex items-center gap-4"><div className="p-3 bg-violet-100 text-violet-600 rounded-2xl shadow-sm"><Brain size={24} /></div><div><h3 className="text-xl font-black text-slate-900 tracking-tight">Revision Queue</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Spaced Repetition Schedule</p></div></div><button onClick={() => onNavigate('revision')} className="text-xs font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 transition-colors">Lab</button></div>
           <div className="space-y-4">
             {revisionQueue.length > 0 ? revisionQueue.map((chap) => (
               <div key={`${chap.subjectId}-${chap.id}`} className="flex items-center justify-between p-5 bg-slate-50/50 rounded-3xl hover:bg-white border border-transparent hover:border-violet-100 hover:shadow-xl hover:shadow-violet-100/20 transition-all duration-300">
-                <div className="flex items-center gap-5 min-w-0"><div className="w-2 h-10 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: chap.color }} /><div className="truncate"><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{chap.subjectName}</span><h4 className="text-lg font-bold text-slate-800 tracking-tight truncate mt-1">{chap.name}</h4></div></div><div className="text-right shrink-0"><p className="text-[10px] font-black text-violet-600 uppercase tracking-widest bg-violet-50 px-3 py-1 rounded-full">{chap.intervalName}</p><p className="text-[9px] font-bold text-slate-400 mt-2">#{chap.revisions + 1}</p></div></div>
-            )) : <div className="py-16 text-center bg-slate-50/50 rounded-[40px] border-4 border-dashed border-slate-100"><p className="text-sm font-black text-slate-400 uppercase tracking-[0.3em] italic">Retained</p></div>}
+                <div className="flex items-center gap-5 min-w-0"><div className="w-2 h-10 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: chap.color }} /><div className="truncate"><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{chap.subjectName}</span><h4 className="text-lg font-bold text-slate-800 tracking-tight truncate mt-1">{chap.name}</h4></div></div><div className="text-right shrink-0"><p className="text-[10px] font-black text-violet-600 uppercase tracking-widest bg-violet-50 px-3 py-1 rounded-full">{chap.intervalName}</p><p className="text-[9px] font-bold text-slate-400 mt-2">Level {chap.revisions + 1}</p></div></div>
+            )) : <div className="py-16 text-center bg-slate-50/50 rounded-[40px] border-4 border-dashed border-slate-100"><p className="text-sm font-black text-slate-400 uppercase tracking-[0.3em] italic">Buffer Clean</p></div>}
           </div>
         </div>
         <div className="lg:col-span-5 space-y-8">

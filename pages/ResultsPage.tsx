@@ -1,15 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import { ExamResult, Subject } from '../types';
+// Corrected: Module '"../types"' has no exported member 'ExamResult'. Using 'Exam' instead.
+import { Exam, Subject } from '../types';
 import { ICONS } from '../constants';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { getResultPerformanceAnalysis } from '../services/geminiService';
+// Corrected: '"../services/geminiService"' has no exported member named 'getResultPerformanceAnalysis'.
+import { getExamPerformanceAnalysis } from '../services/geminiService';
 import { Sparkles } from 'lucide-react';
 
 interface ResultsPageProps {
-  results: ExamResult[];
+  // Using Exam instead of ExamResult
+  results: Exam[];
   subjects: Subject[];
-  onAdd: (r: ExamResult) => void;
+  onAdd: (r: Exam) => void;
   onDelete: (id: string) => void;
 }
 
@@ -29,7 +32,8 @@ const ResultsPage: React.FC<ResultsPageProps> = ({ results, subjects, onAdd, onD
     const fetchAnalysis = async () => {
       if (results.length > 0) {
         setLoadingAnalysis(true);
-        const res = await getResultPerformanceAnalysis(results, subjects);
+        // Corrected: Using getExamPerformanceAnalysis
+        const res = await getExamPerformanceAnalysis(results, subjects);
         setAnalysis(res);
         setLoadingAnalysis(false);
       }
@@ -41,16 +45,22 @@ const ResultsPage: React.FC<ResultsPageProps> = ({ results, subjects, onAdd, onD
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .map(r => ({
       date: new Date(r.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      percentage: Math.round((r.obtainedMarks / r.totalMarks) * 100),
+      // Corrected: Handling optional marks property from Exam type
+      percentage: Math.round(((r.obtainedMarks || 0) / (r.totalMarks || 1)) * 100),
       subject: subjects.find(s => s.id === r.subjectId)?.name || 'Unknown'
     }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.subjectId) return;
+    // Corrected: Provided mandatory fields for Exam interface
     onAdd({
       id: Date.now().toString(),
-      ...formData as any
+      title: `Result - ${formData.type}`,
+      priority: 'Medium',
+      isCompleted: true,
+      isGraded: true,
+      ...formData
     });
     setIsAdding(false);
   };
@@ -160,7 +170,8 @@ const ResultsPage: React.FC<ResultsPageProps> = ({ results, subjects, onAdd, onD
               <tbody className="divide-y divide-slate-100">
                 {results.map(res => {
                   const sub = subjects.find(s => s.id === res.subjectId);
-                  const perc = Math.round((res.obtainedMarks / res.totalMarks) * 100);
+                  // Corrected: Handling optional marks
+                  const perc = Math.round(((res.obtainedMarks || 0) / (res.totalMarks || 1)) * 100);
                   return (
                     <tr key={res.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="px-6 py-4">
@@ -201,7 +212,8 @@ const ResultsPage: React.FC<ResultsPageProps> = ({ results, subjects, onAdd, onD
                {subjects.map(sub => {
                  const subResults = results.filter(r => r.subjectId === sub.id);
                  if (subResults.length === 0) return null;
-                 const avg = Math.round(subResults.reduce((acc, r) => acc + (r.obtainedMarks / r.totalMarks), 0) / subResults.length * 100);
+                 // Corrected: Handling optional marks
+                 const avg = Math.round(subResults.reduce((acc, r) => acc + ((r.obtainedMarks || 0) / (r.totalMarks || 1)), 0) / subResults.length * 100);
                  return (
                    <div key={sub.id} className="flex items-center justify-between group">
                      <div className="flex items-center gap-3">

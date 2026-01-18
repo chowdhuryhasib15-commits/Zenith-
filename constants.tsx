@@ -6,7 +6,7 @@ import {
   RotateCcw, 
   Timer, 
   Calendar, 
-  BarChart3,
+  Trophy,
   PlayCircle,
   Plus,
   Trash2,
@@ -18,7 +18,8 @@ import {
   Zap,
   Laugh,
   Frown,
-  Angry
+  Angry,
+  CalendarCheck
 } from 'lucide-react';
 
 export const COLORS = [
@@ -39,7 +40,7 @@ export const NAV_ITEMS = [
   { id: 'courses', label: 'Courses', icon: <PlayCircle size={20} /> },
   { id: 'pomodoro', label: 'Pomodoro', icon: <Timer size={20} /> },
   { id: 'goals', label: 'Goals', icon: <Calendar size={20} /> },
-  { id: 'results', label: 'Results', icon: <BarChart3 size={20} /> },
+  { id: 'exams', label: 'Exams', icon: <CalendarCheck size={20} /> },
 ];
 
 export const ICONS = {

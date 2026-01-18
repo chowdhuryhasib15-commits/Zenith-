@@ -15,7 +15,7 @@ export interface Chapter {
   isCompleted: boolean;
   completedAt?: string | undefined;
   lastRevisedAt?: string | undefined;
-  revisions: number; // Count of revisions done
+  revisions: number; 
 }
 
 export interface Subject {
@@ -49,13 +49,17 @@ export interface Goal {
   completedDates?: string[];
 }
 
-export interface ExamResult {
+export interface Exam {
   id: string;
   subjectId: string;
-  type: 'Quiz' | 'Midterm' | 'Final' | 'Assignment';
-  totalMarks: number;
-  obtainedMarks: number;
+  title: string;
   date: string;
+  priority: 'High' | 'Medium' | 'Low';
+  type: string; // Custom string for categories like "Semester Final", "Mock", etc.
+  isCompleted: boolean; // Marked as taken
+  isGraded: boolean; // Marks have been entered
+  totalMarks?: number;
+  obtainedMarks?: number;
 }
 
 export interface PomodoroLog {
@@ -65,15 +69,24 @@ export interface PomodoroLog {
   timestamp: string;
 }
 
+export interface StudyTask {
+  id: string;
+  task: string;
+  priority: 'Critical' | 'Focus' | 'Routine';
+  estimatedTime: string;
+}
+
 export interface AppState {
   user?: User;
   subjects: Subject[];
   goals: Goal[];
-  results: ExamResult[];
+  exams: Exam[];
   pomodoroLogs: PomodoroLog[];
   courses: Course[];
   theme: AppTheme;
   syllabusDeadline?: string;
   syncStatus: SyncStatus;
   lastSyncedAt?: string;
+  currentStudyPlan?: StudyTask[];
+  customExamTypes: string[]; // Track user-created exam categories
 }

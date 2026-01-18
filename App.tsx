@@ -1,26 +1,27 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { AppState, Subject, Goal, ExamResult, PomodoroLog, User, Course, AppTheme } from './types';
+import { AppState, Subject, Goal, PomodoroLog, User, Course, AppTheme, Exam, StudyTask } from './types';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import SubjectsPage from './pages/SubjectsPage';
 import RevisionPage from './pages/RevisionPage';
 import PomodoroPage from './pages/PomodoroPage';
 import GoalsPage from './pages/GoalsPage';
-import ResultsPage from './pages/ResultsPage';
+import ExamsPage from './pages/ExamsPage';
 import CoursesPage from './pages/CoursesPage';
 import AuthOverlay from './components/AuthOverlay';
 
-const STORAGE_KEY = 'zenith_app_data_v1';
+const STORAGE_KEY = 'zenith_app_data_v2';
 
 const INITIAL_STATE: AppState = {
   subjects: [],
   goals: [],
-  results: [],
+  exams: [],
   pomodoroLogs: [],
   courses: [],
   theme: 'light',
   syncStatus: 'local-only',
+  customExamTypes: ['Semester Final', 'Midterm', 'Quiz', 'Mock Test']
 };
 
 const App: React.FC = () => {
@@ -32,7 +33,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    // Apply theme to body
     const body = document.body;
     body.className = body.className.replace(/theme-\w+/, '').trim();
     if (state.theme && state.theme !== 'light') {
@@ -58,7 +58,6 @@ const App: React.FC = () => {
   };
 
   const updateTheme = (theme: AppTheme) => setState(prev => ({ ...prev, theme }));
-
   const updateSubjects = (subjects: Subject[]) => setState(prev => ({ ...prev, subjects, syncStatus: 'local-only' }));
   const addGoal = (goal: Goal) => setState(prev => ({ ...prev, goals: [...prev.goals, goal], syncStatus: 'local-only' }));
   
@@ -81,9 +80,22 @@ const App: React.FC = () => {
   }));
 
   const deleteGoal = (id: string) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id), syncStatus: 'local-only' }));
-  const addResult = (result: ExamResult) => setState(prev => ({ ...prev, results: [...prev.results, result], syncStatus: 'local-only' }));
-  const deleteResult = (id: string) => setState(prev => ({ ...prev, results: prev.results.filter(r => r.id !== id), syncStatus: 'local-only' }));
   
+  const addExam = (exam: Exam) => setState(prev => {
+    const updatedTypes = prev.customExamTypes.includes(exam.type) 
+      ? prev.customExamTypes 
+      : [...prev.customExamTypes, exam.type];
+    return { ...prev, exams: [...prev.exams, exam], customExamTypes: updatedTypes, syncStatus: 'local-only' };
+  });
+
+  const deleteExam = (id: string) => setState(prev => ({ ...prev, exams: prev.exams.filter(e => e.id !== id), syncStatus: 'local-only' }));
+  
+  const updateExam = (id: string, updates: Partial<Exam>) => setState(prev => ({
+    ...prev,
+    exams: prev.exams.map(e => e.id === id ? { ...e, ...updates } : e),
+    syncStatus: 'local-only'
+  }));
+
   const logPomodoro = (log: PomodoroLog) => setState(prev => ({ 
     ...prev, 
     pomodoroLogs: [...prev.pomodoroLogs, log],
@@ -91,53 +103,48 @@ const App: React.FC = () => {
   }));
 
   const setSyllabusDeadline = (date: string) => setState(prev => ({ ...prev, syllabusDeadline: date, syncStatus: 'local-only' }));
-  
   const addCourse = (course: Course) => setState(prev => ({ ...prev, courses: [...prev.courses, course], syncStatus: 'local-only' }));
   const deleteCourse = (id: string) => setState(prev => ({ ...prev, courses: prev.courses.filter(c => c.id !== id), syncStatus: 'local-only' }));
 
-  const onSyncStart = () => setState(prev => ({ ...prev, syncStatus: 'syncing' }));
-  const onSyncComplete = () => setState(prev => ({ ...prev, syncStatus: 'synced', lastSyncedAt: new Date().toISOString() }));
-  
+  const setStudyPlan = (plan: StudyTask[]) => setState(prev => ({ ...prev, currentStudyPlan: plan }));
+
   const onRestore = (newState: AppState) => {
     setState({ ...newState, syncStatus: 'synced', lastSyncedAt: new Date().toISOString() });
   };
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard': return <Dashboard state={state} onNavigate={setActiveTab} onUpdateDeadline={setSyllabusDeadline} />;
+      case 'dashboard': return <Dashboard state={state} onNavigate={setActiveTab} onUpdateDeadline={setSyllabusDeadline} onSetStudyPlan={setStudyPlan} />;
       case 'subjects': return <SubjectsPage subjects={state.subjects} setSubjects={updateSubjects} />;
       case 'revision': return <RevisionPage subjects={state.subjects} setSubjects={updateSubjects} />;
       case 'courses': return <CoursesPage courses={state.courses} subjects={state.subjects} onAdd={addCourse} onDelete={deleteCourse} />;
       case 'pomodoro': return <PomodoroPage subjects={state.subjects} onComplete={logPomodoro} logs={state.pomodoroLogs} fullState={state} onRestore={onRestore} />;
       case 'goals': return <GoalsPage goals={state.goals} onAdd={addGoal} onToggle={toggleGoal} onDelete={deleteGoal} />;
-      case 'results': return <ResultsPage results={state.results} subjects={state.subjects} onAdd={addResult} onDelete={deleteResult} />;
-      default: return <Dashboard state={state} onNavigate={setActiveTab} onUpdateDeadline={setSyllabusDeadline} />;
+      case 'exams': return (
+        <ExamsPage 
+          exams={state.exams} 
+          subjects={state.subjects} 
+          customTypes={state.customExamTypes}
+          onAddExam={addExam} 
+          onDeleteExam={deleteExam} 
+          onUpdateExam={updateExam}
+        />
+      );
+      default: return <Dashboard state={state} onNavigate={setActiveTab} onUpdateDeadline={setSyllabusDeadline} onSetStudyPlan={setStudyPlan} />;
     }
   };
 
-  if (!state.user) {
-    return <AuthOverlay onLogin={handleLogin} />;
-  }
+  if (!state.user) return <AuthOverlay onLogin={handleLogin} />;
 
   return (
     <div className="flex min-h-screen overflow-hidden transition-colors duration-500">
       <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        user={state.user} 
-        onLogout={handleLogout} 
-        onUpdateUser={updateUser}
-        theme={state.theme}
-        onUpdateTheme={updateTheme}
-        state={state}
-        onSyncStart={onSyncStart}
-        onSyncComplete={onSyncComplete}
-        onRestore={onRestore}
+        activeTab={activeTab} setActiveTab={setActiveTab} user={state.user} onLogout={handleLogout} onUpdateUser={updateUser}
+        theme={state.theme} onUpdateTheme={updateTheme} state={state} onSyncStart={() => setState(prev => ({ ...prev, syncStatus: 'syncing' }))}
+        onSyncComplete={() => setState(prev => ({ ...prev, syncStatus: 'synced', lastSyncedAt: new Date().toISOString() }))} onRestore={onRestore}
       />
       <main className="flex-1 lg:ml-64 p-4 lg:p-8 pt-20 lg:pt-8 overflow-y-auto max-h-screen custom-scrollbar relative bg-transparent">
-        <div key={activeTab} className="page-transition min-h-full">
-          {renderContent()}
-        </div>
+        <div key={activeTab} className="page-transition min-h-full">{renderContent()}</div>
       </main>
     </div>
   );
