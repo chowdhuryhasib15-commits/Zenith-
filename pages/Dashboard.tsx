@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { AppState, Subject, Chapter, StudyTask } from '../types';
 import { ICONS } from '../constants';
 import { getStudyInsights, getDailyStudyPlan, getDynamicGreeting } from '../services/geminiService';
-import { Timer, Edit2, X, AlertCircle, Zap, Brain, ChevronRight, Sparkles, GraduationCap, UserCircle, Download, ShieldCheck, RefreshCw, ListTodo, Clock, Sprout, Flower2, Leaf, Target } from 'lucide-react';
+import { Timer, Edit2, X, AlertCircle, Zap, Brain, ChevronRight, Sparkles, GraduationCap, UserCircle, Download, ShieldCheck, RefreshCw, ListTodo, Clock, Sprout, Flower2, Leaf, Target, TrendingUp } from 'lucide-react';
 
 interface DashboardProps {
   state: AppState;
@@ -27,9 +27,9 @@ export const NeuralGarden = ({ streak, isWilted, scale = 1 }: { streak: number; 
   const levels = streak >= 12 ? 5 : streak >= 8 ? 4 : streak >= 4 ? 3 : streak >= 1 ? 2 : 1;
   
   return (
-    <div className="relative w-full h-48 flex flex-col justify-end items-center perspective-1000 overflow-visible">
-      {/* UI Labels - Positioned outside of the scaled content to prevent clipping */}
-      <div className="absolute top-0 left-6 z-30 text-left pointer-events-none">
+    <div className="relative w-full h-56 flex flex-col justify-end items-center perspective-1000 overflow-visible">
+      {/* UI Labels - Added more left padding to prevent clipping on curved corners */}
+      <div className="absolute top-0 left-8 z-30 text-left pointer-events-none">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] whitespace-nowrap">Zenith Arboreatum</p>
         <p className={`text-xl font-black ${isWilted ? 'text-amber-700' : 'text-slate-900'} tracking-tighter whitespace-nowrap`}>
           {isWilted ? 'Dormant' : levels === 5 ? 'Zenith Bloom' : levels === 4 ? 'Flourishing' : levels === 3 ? 'Resilient' : levels === 2 ? 'Robust Growth' : 'New Sprout'}
@@ -38,7 +38,7 @@ export const NeuralGarden = ({ streak, isWilted, scale = 1 }: { streak: number; 
 
       {/* Scalable Plant Graphics */}
       <div 
-        className="relative w-full h-full flex items-end justify-center transition-transform duration-1000 origin-bottom"
+        className="relative w-full h-40 flex items-end justify-center transition-transform duration-1000 origin-bottom"
         style={{ transform: `scale(${scale})` }}
       >
         <div className="absolute inset-x-0 bottom-0 h-4 bg-slate-900/10 blur-xl rounded-full scale-x-50 mx-auto" />
@@ -289,7 +289,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
         <div className="lg:col-span-4 bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm flex flex-col justify-between items-center text-center relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-bl-full -z-0 opacity-40 transition-transform group-hover:scale-110 duration-700" />
           
-          <button onClick={() => onNavigate('garden')} className="w-full text-left flex flex-col items-center group/garden hover:opacity-90 transition-opacity">
+          <button onClick={() => onNavigate('garden')} className="w-full text-left flex flex-col items-center group/garden hover:opacity-90 transition-opacity overflow-visible">
             <NeuralGarden streak={state.gardenStreak} isWilted={isWilted} />
             <div className="mt-4 px-6 py-4 bg-slate-50/50 rounded-3xl border border-slate-100 w-full flex items-center gap-4 group/goal">
                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover/goal:scale-110 ${state.hasAchievedGoalToday ? 'bg-emerald-500 text-white' : 'bg-white text-slate-300'}`}>
