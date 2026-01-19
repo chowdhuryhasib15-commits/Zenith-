@@ -43,6 +43,8 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     obtainedMarks: 0
   });
 
+  const cleanSubName = (name: string) => name.replace(/\s*(1st|2nd)?\s*Paper/gi, '').trim();
+
   useEffect(() => {
     const fetchAnalysis = async () => {
       if (exams.some(e => e.isGraded)) {
@@ -109,7 +111,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     .map(r => ({
       date: new Date(r.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
       percentage: Math.round(((r.obtainedMarks || 0) / (r.totalMarks || 1)) * 100),
-      subject: subjects.find(s => s.id === r.subjectId)?.name || 'Deleted'
+      subject: cleanSubName(subjects.find(s => s.id === r.subjectId)?.name || 'Deleted')
     }));
 
   const averagePerformance = useMemo(() => {
@@ -154,11 +156,11 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
                           </div>
                           <div>
                              <div className="flex items-center gap-2 mb-1">
-                               <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{sub?.name || 'Unknown'}</p>
+                               <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{cleanSubName(sub?.name || 'Unknown')}</p>
                                <span className="text-[8px] px-2 py-0.5 bg-slate-100 text-slate-500 font-black rounded-full uppercase tracking-widest">{exam.type}</span>
                              </div>
                              <h4 className="text-lg font-black text-slate-900 leading-tight">
-                                {sub?.name} {exam.type}
+                                {cleanSubName(sub?.name || 'Unknown')} {exam.type}
                              </h4>
                              <div className="flex items-center gap-3 mt-2">
                                 <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${exam.priority === 'High' ? 'bg-rose-100 text-rose-600' : exam.priority === 'Medium' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>{exam.priority}</span>
@@ -276,7 +278,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
                              <div className="flex items-center gap-4">
                                 <div className="w-1.5 h-10 rounded-full" style={{ backgroundColor: sub?.color || '#cbd5e1' }} />
                                 <div>
-                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{sub?.name || 'Deleted'}</p>
+                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{cleanSubName(sub?.name || 'Deleted')}</p>
                                   <h5 className="text-sm font-black text-slate-800 tracking-tight line-clamp-1">{res.title}</h5>
                                   <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{res.type}</span>
                                 </div>
@@ -356,7 +358,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
                                 <td className="px-10 py-6">
                                    <div className="flex items-center gap-3">
                                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sub?.color }} />
-                                      <span className="text-sm font-black text-slate-700">{sub?.name || 'Unknown'}</span>
+                                      <span className="text-sm font-black text-slate-700">{cleanSubName(sub?.name || 'Unknown')}</span>
                                    </div>
                                 </td>
                                 <td className="px-10 py-6 text-sm font-bold text-slate-900">{res.title}</td>
@@ -405,7 +407,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
                         {currentSelectedSubject ? (
                           <>
                             <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: currentSelectedSubject.color }} />
-                            <span className="font-black text-slate-900 truncate">{currentSelectedSubject.name}</span>
+                            <span className="font-black text-slate-900 truncate">{cleanSubName(currentSelectedSubject.name)}</span>
                           </>
                         ) : (
                           <span className="font-bold text-slate-400 italic">Select Domain...</span>
@@ -424,7 +426,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
                               className={`w-full flex items-center gap-4 px-5 py-3 rounded-2xl transition-all group hover:bg-indigo-50/50 ${examForm.subjectId === s.id ? 'bg-indigo-50' : ''}`}
                             >
                               <div className="w-2.5 h-2.5 rounded-full shadow-sm group-hover:scale-125 transition-transform" style={{ backgroundColor: s.color }} />
-                              <span className={`text-sm font-black truncate ${examForm.subjectId === s.id ? 'text-indigo-600' : 'text-slate-600'}`}>{s.name}</span>
+                              <span className={`text-sm font-black truncate ${examForm.subjectId === s.id ? 'text-indigo-600' : 'text-slate-600'}`}>{cleanSubName(s.name)}</span>
                               {examForm.subjectId === s.id && <Check size={14} className="ml-auto text-indigo-600" />}
                             </button>
                           ))}

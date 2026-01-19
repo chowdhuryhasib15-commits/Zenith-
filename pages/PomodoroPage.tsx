@@ -242,7 +242,9 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     const map: Record<string, { minutes: number; color: string }> = {};
     logs.forEach(log => {
       const sub = subjects.find(s => s.id === log.subjectId);
-      const name = sub?.name || 'Deleted';
+      const rawName = sub?.name || 'Deleted';
+      // Aggregation logic: strip "1st Paper" or "2nd Paper" to group by subject name only
+      const name = rawName.replace(/\s*(1st|2nd)?\s*Paper/gi, '').trim();
       const color = sub?.color || '#cbd5e1';
       if (!map[name]) map[name] = { minutes: 0, color };
       map[name].minutes += log.duration;

@@ -27,7 +27,7 @@ const RevisionPage: React.FC<RevisionPageProps> = ({ subjects, setSubjects }) =>
       })
       .map(c => ({ 
         ...c, 
-        subjectName: s.name, 
+        subjectName: s.name.replace(/\s*(1st|2nd)?\s*Paper/gi, '').trim(), 
         subjectId: s.id, 
         color: s.color,
         nextInterval: REVISION_INTERVALS[c.revisions] || 30

@@ -164,7 +164,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
           if (daysSinceLastEvent >= requiredInterval) {
             queue.push({
               ...chap,
-              subjectName: sub.name,
+              subjectName: sub.name.replace(/\s*(1st|2nd)?\s*Paper/gi, '').trim(),
               subjectId: sub.id,
               color: sub.color,
               dueInDays: Math.floor(daysSinceLastEvent),
