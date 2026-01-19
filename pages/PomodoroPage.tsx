@@ -3,16 +3,17 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Subject, PomodoroLog, AppState } from '../types';
 import { 
   XAxis, YAxis, Tooltip, ResponsiveContainer, 
-  CartesianGrid, AreaChart, Area, PieChart, Pie, Cell, Legend
+  CartesianGrid, AreaChart, Area, PieChart, Pie, Cell
 } from 'recharts';
 import { 
   Play, Pause, X, 
-  Settings2, CheckCircle2, Flame, Trophy, Clock, Trash2, 
+  Settings2, CheckCircle2, Flame, Trophy, Clock,
   Download, RefreshCw, Lock, ChevronDown, Volume2, VolumeX,
-  TrendingUp, Activity, CloudRain, Music, Wind, Youtube, Disc, ListMusic, ChevronRight, ShieldCheck, 
-  Radio, Volume1, Signal, Zap, SignalHigh, SignalMedium, SignalLow, Waves, BarChart3,
+  TrendingUp, Activity, CloudRain, Music, Wind, Youtube, Disc, ListMusic, ShieldCheck, 
+  Radio, SignalHigh, SignalMedium, SignalLow, Waves, BarChart3,
   PieChart as PieChartIcon
 } from 'lucide-react';
+import { ICONS } from '../constants';
 
 interface PomodoroPageProps {
   subjects: Subject[];
@@ -28,7 +29,6 @@ const AMBIENT_PRESETS = [
   { id: 'noise', label: 'White Noise', icon: <Wind size={20} />, ytId: 'nMfPqeZjc2c' }, 
 ];
 
-// High-Fidelity Reactive Visualizer Component
 const Visualizer = ({ isActive, volume, isMuted, color = "bg-indigo-400" }: { isActive: boolean; volume: number; isMuted: boolean; color?: string }) => {
   const intensity = isMuted ? 0 : volume / 100;
   
@@ -75,10 +75,10 @@ const DynamicSignalIcon = ({ volume, isMuted }: { volume: number, isMuted: boole
 };
 
 const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs, fullState, onRestore }) => {
-  // Timer State
-  const [focusDuration, setFocusDuration] = useState(52);
-  const [breakDuration, setBreakDuration] = useState(17);
-  const [minutes, setMinutes] = useState(52);
+  // Timer State - Default Focus to 25m, Break to 5m
+  const [focusDuration, setFocusDuration] = useState(25);
+  const [breakDuration, setBreakDuration] = useState(5);
+  const [minutes, setMinutes] = useState(25);
   const [seconds, setSeconds] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [selectedSub, setSelectedSub] = useState<string>('');
@@ -99,7 +99,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   const dropdownRef = useRef<HTMLDivElement>(null);
   const ytPlayerRef = useRef<any>(null);
 
-  // Load YouTube IFrame API
   useEffect(() => {
     if (!(window as any).YT) {
       const tag = document.createElement('script');
@@ -109,7 +108,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     }
   }, []);
 
-  // Initialize/Update Player
   useEffect(() => {
     if (!playingYtId) {
       if (ytPlayerRef.current) {
@@ -121,18 +119,8 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
 
     const initPlayer = () => {
       ytPlayerRef.current = new (window as any).YT.Player('yt-audio-hub', {
-        height: '0',
-        width: '0',
-        videoId: playingYtId,
-        playerVars: {
-          autoplay: 1,
-          controls: 0,
-          modestbranding: 1,
-          loop: 1,
-          playlist: playingYtId,
-          origin: window.location.origin,
-          enablejsapi: 1,
-        },
+        height: '0', width: '0', videoId: playingYtId,
+        playerVars: { autoplay: 1, controls: 0, modestbranding: 1, loop: 1, playlist: playingYtId, origin: window.location.origin, enablejsapi: 1 },
         events: {
           onReady: (event: any) => {
             event.target.setVolume(hubVolume);
@@ -145,17 +133,11 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     };
 
     if ((window as any).YT && (window as any).YT.Player) {
-      if (ytPlayerRef.current) {
-        ytPlayerRef.current.loadVideoById(playingYtId);
-      } else {
-        initPlayer();
-      }
-    } else {
-      (window as any).onYouTubeIframeAPIReady = initPlayer;
-    }
+      if (ytPlayerRef.current) ytPlayerRef.current.loadVideoById(playingYtId);
+      else initPlayer();
+    } else (window as any).onYouTubeIframeAPIReady = initPlayer;
   }, [playingYtId]);
 
-  // Real-time Volume/Mute Control
   useEffect(() => {
     if (ytPlayerRef.current && ytPlayerRef.current.setVolume) {
       ytPlayerRef.current.setVolume(hubVolume);
@@ -183,13 +165,9 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   useEffect(() => {
     if (isActive) {
       const modeEmoji = mode === 'focus' ? '🎯' : '☕';
-      const modeStr = mode === 'focus' ? 'Focus' : 'Break';
-      const separator = seconds % 2 === 0 ? ':' : ' ';
-      const timeDisplay = `${String(minutes).padStart(2, '0')}${separator}${String(seconds).padStart(2, '0')}`;
-      document.title = `${timeDisplay} ${modeEmoji} ${modeStr}`;
-    } else {
-      document.title = 'ZENITH - Reach Your Peak';
-    }
+      const timeDisplay = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      document.title = `${timeDisplay} ${modeEmoji}`;
+    } else document.title = 'ZENITH - Reach Your Peak';
     return () => { document.title = 'ZENITH - Reach Your Peak'; };
   }, [isActive, minutes, seconds, mode]);
 
@@ -202,6 +180,32 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
       setSeconds(0);
     }
   }, [focusDuration, breakDuration, mode, isActive]);
+
+  // HIGH ACCURACY TIMER ENGINE
+  useEffect(() => {
+    if (isActive) {
+      // Calculate absolute target time to prevent drift from state update lag
+      const targetTime = Date.now() + (minutes * 60 + seconds) * 1000;
+      
+      timerRef.current = setInterval(() => {
+        const now = Date.now();
+        const diff = Math.max(0, Math.round((targetTime - now) / 1000));
+        
+        if (diff === 0) {
+          setIsActive(false);
+          if (timerRef.current) clearInterval(timerRef.current);
+          if (mode === 'focus') {
+            onComplete({ id: Date.now().toString(), subjectId: selectedSub, duration: focusDuration, timestamp: new Date().toISOString() });
+            setMode('break');
+          } else setMode('focus');
+        } else {
+          setMinutes(Math.floor(diff / 60));
+          setSeconds(diff % 60);
+        }
+      }, 200); // Check 5 times a second for snappy UI
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [isActive, mode, selectedSub, focusDuration]);
 
   const streakCount = useMemo(() => {
     if (logs.length === 0) return 0;
@@ -257,8 +261,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     setIsActive(true);
   };
 
-  const pauseTimer = () => setIsActive(false);
-
   const resetTimer = (newMode?: 'focus' | 'break') => {
     setIsActive(false);
     if (timerRef.current) clearInterval(timerRef.current);
@@ -272,7 +274,8 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   };
 
   const handleFinishEarly = () => {
-    pauseTimer();
+    if (timerRef.current) clearInterval(timerRef.current);
+    setIsActive(false);
     if (mode === 'focus') {
       onComplete({ 
         id: Date.now().toString(), 
@@ -280,28 +283,11 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
         duration: focusDuration, 
         timestamp: new Date().toISOString() 
       });
-      handleModeChange('break');
+      setMode('break');
     } else {
-      handleModeChange('focus');
+      setMode('focus');
     }
   };
-
-  useEffect(() => {
-    if (isActive) {
-      timerRef.current = setInterval(() => {
-        if (seconds > 0) setSeconds(prev => prev - 1);
-        else if (minutes > 0) { setMinutes(prev => prev - 1); setSeconds(59); }
-        else {
-          pauseTimer();
-          if (mode === 'focus') {
-            onComplete({ id: Date.now().toString(), subjectId: selectedSub, duration: focusDuration, timestamp: new Date().toISOString() });
-            handleModeChange('break');
-          } else handleModeChange('focus');
-        }
-      }, 1000);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [isActive, minutes, seconds, mode, selectedSub, focusDuration]);
 
   const handleCustomYtSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -310,9 +296,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     if (match && match[2].length === 11) {
       setPlayingYtId(match[2]);
       setSelectedAmbient('custom');
-    } else {
-      alert("Invalid YouTube URL.");
-    }
+    } else alert("Invalid YouTube URL.");
   };
 
   const selectAmbient = (id: string, ytId: string) => {
@@ -378,7 +362,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
           {isActive && <div className={`absolute inset-0 rounded-full blur-[100px] transition-all duration-[2000ms] animate-pulse ${mode === 'focus' ? 'bg-indigo-500/20' : 'bg-emerald-500/20'}`} />}
           <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
             <circle cx="170" cy="170" r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="transparent" className="text-slate-100/50" />
-            <circle cx="170" cy="170" r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} style={{ transition: 'stroke-dashoffset 1s linear' }} strokeLinecap="round" className={mode === 'focus' ? 'text-indigo-600' : 'text-emerald-500'} />
+            <circle cx="170" cy="170" r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} style={{ transition: 'stroke-dashoffset 0.2s linear' }} strokeLinecap="round" className={mode === 'focus' ? 'text-indigo-600' : 'text-emerald-500'} />
           </svg>
           <div className="flex flex-col items-center justify-center text-center pointer-events-none z-10">
             {isActive && currentDisplaySubject && <span className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400 mb-4">{currentDisplaySubject.name}</span>}
@@ -395,20 +379,18 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
               {!selectedSub ? <Lock size={28} /> : <Play size={32} fill="currentColor" className="ml-1 group-hover:scale-110 transition-transform" />}
             </button>
           ) : (
-            <><button onClick={pauseTimer} className="w-20 h-20 rounded-[28px] bg-slate-900 text-white flex items-center justify-center shadow-xl hover:bg-indigo-600 active:scale-90 transition-all group"><Pause size={32} fill="currentColor" /></button>
-            <button onClick={() => { if(window.confirm("Abort?")) resetTimer(); }} className="w-20 h-20 rounded-[28px] bg-white text-rose-500 border-2 border-rose-50 flex items-center justify-center shadow-sm hover:bg-rose-50 active:scale-90 transition-all"><X size={32} /></button></>
+            <><button onClick={() => setIsActive(false)} className="w-20 h-20 rounded-[28px] bg-slate-900 text-white flex items-center justify-center shadow-xl hover:bg-indigo-600 active:scale-90 transition-all group"><Pause size={32} fill="currentColor" /></button>
+            <button onClick={() => { if(window.confirm("Abort mission?")) resetTimer(); }} className="w-20 h-20 rounded-[28px] bg-white text-rose-500 border-2 border-rose-50 flex items-center justify-center shadow-sm hover:bg-rose-50 active:scale-90 transition-all"><X size={32} /></button></>
           )}
-          {isActive && <button onClick={() => { if(mode === 'focus') handleFinishEarly(); else handleModeChange('focus'); }} className="p-5 text-emerald-600 hover:bg-emerald-50 rounded-[24px] transition-all group"><CheckCircle2 size={28} /></button>}
+          {isActive && <button onClick={() => handleFinishEarly()} className="p-5 text-emerald-600 hover:bg-emerald-50 rounded-[24px] transition-all group"><CheckCircle2 size={28} /></button>}
           {!isActive && <button onClick={() => setShowSettings(true)} className="p-6 text-slate-400 hover:text-indigo-600 transition-all hover:bg-indigo-50 rounded-[24px] group"><Settings2 size={28} /></button>}
         </div>
       </section>
 
-      {/* Acoustic Hub Hidden Engine */}
       <div className="hidden" id="yt-audio-hub" />
 
       {!isActive && (
         <section className="max-w-7xl mx-auto w-full px-4 space-y-12">
-          
           <div className="flex gap-4 p-2 bg-slate-100/50 w-fit mx-auto rounded-[24px] border border-slate-200 shadow-inner">
             <button onClick={() => setActiveTab('stats')} className={`flex items-center gap-2 px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'stats' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
               <BarChart3 size={16} /> Analytics
@@ -461,23 +443,10 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                       {subjectDistributionData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                           <PieChart>
-                            <Pie
-                              data={subjectDistributionData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={80}
-                              paddingAngle={5}
-                              dataKey="minutes"
-                            >
-                              {subjectDistributionData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
+                            <Pie data={subjectDistributionData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="minutes">
+                              {subjectDistributionData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                             </Pie>
-                            <Tooltip 
-                              contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
-                              formatter={(value: any) => `${value} min`}
-                            />
+                            <Tooltip contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
                           </PieChart>
                         </ResponsiveContainer>
                       ) : (
@@ -486,17 +455,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                            <p className="text-[10px] font-black uppercase tracking-widest">No Distribution Data</p>
                         </div>
                       )}
-                    </div>
-                    <div className="mt-4 space-y-2">
-                      {subjectDistributionData.slice(0, 3).map((item, i) => (
-                        <div key={i} className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
-                           <div className="flex items-center gap-2">
-                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                             <span className="text-slate-500 truncate max-w-[100px]">{item.name}</span>
-                           </div>
-                           <span className="text-slate-900">{item.minutes}m</span>
-                        </div>
-                      ))}
                     </div>
                   </div>
 
@@ -509,9 +467,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                            <div key={i} className="group">
                              <div className="flex justify-between items-center mb-2">
                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-[10px]" style={{ backgroundColor: item.color }}>
-                                    {item.name.charAt(0)}
-                                  </div>
+                                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-[10px]" style={{ backgroundColor: item.color }}>{item.name.charAt(0)}</div>
                                   <span className="text-sm font-bold text-slate-700">{item.name}</span>
                                </div>
                                <div className="text-right">
@@ -525,11 +481,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                            </div>
                          );
                        })}
-                       {subjectDistributionData.length === 0 && (
-                         <div className="py-20 text-center text-slate-400 italic font-black uppercase tracking-[0.2em] opacity-40">
-                           Laboratory Buffer Clear
-                         </div>
-                       )}
                     </div>
                   </div>
                 </div>
@@ -540,136 +491,51 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {AMBIENT_PRESETS.map((p) => (
                       <button 
-                        key={p.id} 
-                        onClick={() => selectAmbient(p.id, p.ytId)}
+                        key={p.id} onClick={() => selectAmbient(p.id, p.ytId)}
                         className={`group p-8 rounded-[40px] border-2 transition-all flex flex-col items-center text-center gap-4 active:scale-95 ${selectedAmbient === p.id ? 'bg-indigo-600 border-indigo-400 text-white shadow-xl scale-105' : 'bg-white border-slate-100 hover:border-indigo-100 text-slate-600'}`}
                       >
                         <div className={`p-5 rounded-3xl transition-all ${selectedAmbient === p.id ? 'bg-white/20' : 'bg-slate-50 text-indigo-600 group-hover:scale-110'}`}>{p.icon}</div>
                         <span className="text-xs font-black uppercase tracking-widest">{p.label}</span>
-                        {selectedAmbient === p.id && (
-                          <div className="mt-2 h-4 flex items-center justify-center">
-                            <Visualizer isActive={true} volume={hubVolume} isMuted={isHubMuted} color="bg-white" />
-                          </div>
-                        )}
+                        {selectedAmbient === p.id && <div className="mt-2 h-4 flex items-center justify-center"><Visualizer isActive={true} volume={hubVolume} isMuted={isHubMuted} color="bg-white" /></div>}
                       </button>
                     ))}
                   </div>
                   <div className="bg-white p-10 rounded-[48px] border border-slate-100 shadow-sm">
-                    <div className="flex items-center gap-4 mb-8">
-                      <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><ListMusic size={24} /></div>
-                      <div>
-                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Custom Engine</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Inject YouTube Playlists or Tracks</p>
-                      </div>
-                    </div>
+                    <div className="flex items-center gap-4 mb-8"><div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><ListMusic size={24} /></div><div><h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Custom Engine</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Inject YouTube Playlists or Tracks</p></div></div>
                     <div className="flex gap-4">
                       <div className="relative flex-1 group">
                         <Youtube className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-rose-500 transition-colors" size={18} />
-                        <input 
-                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-14 pr-6 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all"
-                          placeholder="Paste YouTube URL..."
-                          value={customYtUrl}
-                          onChange={(e) => setCustomYtUrl(e.target.value)}
-                        />
+                        <input className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-14 pr-6 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all" placeholder="Paste YouTube URL..." value={customYtUrl} onChange={(e) => setCustomYtUrl(e.target.value)} />
                       </div>
-                      <button 
-                        onClick={handleCustomYtSubmit}
-                        className="bg-slate-900 text-white px-8 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-indigo-600 transition-all active:scale-95"
-                      >
-                        Initiate
-                      </button>
+                      <button onClick={handleCustomYtSubmit} className="bg-slate-900 text-white px-8 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-indigo-600 transition-all active:scale-95">Initiate</button>
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-6 leading-relaxed flex items-center gap-2">
-                      <ShieldCheck size={14} className="text-indigo-400" />
-                      Studio audio feed optimized for persistent background playback.
-                    </p>
                   </div>
                 </div>
                 <div className="lg:col-span-4 bg-slate-900 rounded-[56px] p-10 text-white relative overflow-hidden group flex flex-col justify-between">
-                  <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-                     <svg className="w-full h-full" viewBox="0 0 400 600" preserveAspectRatio="none">
-                       <path 
-                        d="M0,300 C100,200 300,400 400,300 L400,600 L0,600 Z" 
-                        fill="white" 
-                        className={`transition-all duration-1000 ${selectedAmbient ? 'animate-pulse' : ''}`}
-                       />
-                     </svg>
-                  </div>
-
                   <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12 -z-0 scale-125 transition-transform group-hover:rotate-0 duration-[3s]"><Disc size={120} /></div>
-                  <div className="relative z-10">
-                    <h3 className="text-4xl font-black tracking-tighter leading-none mb-4">Acoustic <br /><span className="text-indigo-400">Environment.</span></h3>
-                    <p className="text-slate-400 text-sm font-medium leading-relaxed">High-fidelity ambient masking reduces cognitive friction and improves focus retention.</p>
-                  </div>
-
+                  <div className="relative z-10"><h3 className="text-4xl font-black tracking-tighter leading-none mb-4">Acoustic <br /><span className="text-indigo-400">Environment.</span></h3><p className="text-slate-400 text-sm font-medium leading-relaxed">High-fidelity ambient masking reduces cognitive friction and improves focus retention.</p></div>
                   {selectedAmbient ? (
                     <div className="relative z-10 space-y-6 animate-in fade-in slide-in-from-bottom-4 mt-12">
                       <div className="p-6 bg-white/10 rounded-[32px] border border-white/10 backdrop-blur-md shadow-2xl">
                         <div className="flex items-center justify-between mb-6">
                            <div className="flex items-center gap-4">
                              <div className="w-12 h-12 bg-indigo-500 rounded-2xl flex items-center justify-center animate-spin duration-[8000ms]"><Radio size={24} /></div>
-                             <div>
-                               <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest flex items-center gap-2">
-                                 <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" /> Live Feed
-                               </p>
-                               <p className="text-sm font-bold truncate max-w-[140px]">{selectedAmbient === 'custom' ? 'Custom Input' : AMBIENT_PRESETS.find(p => p.id === selectedAmbient)?.label}</p>
-                             </div>
+                             <div><p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest flex items-center gap-2"><span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" /> Live Feed</p><p className="text-sm font-bold truncate max-w-[140px]">{selectedAmbient === 'custom' ? 'Custom Input' : AMBIENT_PRESETS.find(p => p.id === selectedAmbient)?.label}</p></div>
                            </div>
                            <Visualizer isActive={true} volume={hubVolume} isMuted={isHubMuted} />
                         </div>
-                        
                         <div className="space-y-4 pt-4 border-t border-white/10">
                           <div className="flex items-center gap-4">
-                            <button 
-                              onClick={() => setIsHubMuted(!isHubMuted)}
-                              className={`p-4 rounded-2xl transition-all shadow-lg ${isHubMuted ? 'bg-rose-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}
-                            >
-                              {isHubMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                            </button>
+                            <button onClick={() => setIsHubMuted(!isHubMuted)} className={`p-4 rounded-2xl transition-all shadow-lg ${isHubMuted ? 'bg-rose-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}>{isHubMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}</button>
                             <div className="flex-1 space-y-2">
-                              <div className="flex justify-between text-[10px] font-black uppercase text-white/40">
-                                <span className="flex items-center gap-1">
-                                  <DynamicSignalIcon volume={hubVolume} isMuted={isHubMuted} />
-                                  Master Gain
-                                </span>
-                                <span className={isHubMuted ? 'text-rose-400 animate-pulse' : 'text-indigo-400'}>{signalQuality}</span>
-                              </div>
-                              <div className="relative h-6 flex items-center">
-                                <input 
-                                  type="range" 
-                                  min="0" 
-                                  max="100" 
-                                  value={hubVolume} 
-                                  onChange={(e) => setHubVolume(Number(e.target.value))}
-                                  className={`w-full h-1.5 rounded-full appearance-none cursor-pointer transition-all z-10 ${isHubMuted ? 'bg-rose-900/40 accent-rose-500' : 'bg-white/10 accent-indigo-400 hover:bg-white/20'}`}
-                                />
-                                <div 
-                                  className="absolute left-0 top-[11px] h-1.5 rounded-l-full bg-indigo-500 pointer-events-none transition-all duration-300" 
-                                  style={{ width: isHubMuted ? '0%' : `${hubVolume}%`, opacity: 0.5 }}
-                                />
-                              </div>
+                              <div className="flex justify-between text-[10px] font-black uppercase text-white/40"><span className="flex items-center gap-1"><DynamicSignalIcon volume={hubVolume} isMuted={isHubMuted} /> Master Gain</span><span className={isHubMuted ? 'text-rose-400 animate-pulse' : 'text-indigo-400'}>{signalQuality}</span></div>
+                              <input type="range" min="0" max="100" value={hubVolume} onChange={(e) => setHubVolume(Number(e.target.value))} className={`w-full h-1.5 rounded-full appearance-none cursor-pointer transition-all z-10 ${isHubMuted ? 'bg-rose-900/40 accent-rose-500' : 'bg-white/10 accent-indigo-400 hover:bg-white/20'}`} />
                             </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 gap-3">
-                             <button 
-                                onClick={() => { setSelectedAmbient(null); setPlayingYtId(null); }} 
-                                className="py-3.5 bg-rose-500/10 hover:bg-rose-500/30 text-rose-300 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-rose-500/20 transition-all flex items-center justify-center gap-2 group"
-                              >
-                                <X size={14} className="group-hover:rotate-90 transition-transform" /> Terminate Transmission
-                             </button>
                           </div>
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="p-10 bg-white/5 rounded-[40px] border border-white/5 text-center italic text-slate-500 text-xs mt-12 flex flex-col items-center gap-6">
-                      <div className="w-16 h-16 rounded-3xl border border-dashed border-slate-700 flex items-center justify-center animate-spin duration-[15s] opacity-40">
-                        <Waves size={28} />
-                      </div>
-                      <p className="font-black uppercase tracking-[0.2em] opacity-40">Initialize Transmission</p>
-                    </div>
-                  )}
+                  ) : <div className="p-10 bg-white/5 rounded-[40px] border border-white/5 text-center italic text-slate-500 text-xs mt-12 flex flex-col items-center gap-6"><div className="w-16 h-16 rounded-3xl border border-dashed border-slate-700 flex items-center justify-center animate-spin duration-[15s] opacity-40"><Waves size={28} /></div><p className="font-black uppercase tracking-[0.2em] opacity-40">Initialize Transmission</p></div>}
                 </div>
               </div>
             )}
@@ -686,15 +552,12 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
              </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-16 relative z-10">
                 <div className="space-y-10">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-[11px] font-black text-indigo-500 uppercase tracking-[0.3em] flex items-center gap-3"><Clock size={16} /> Phase Cycles</h4>
-                    <button onClick={() => setIsHubMuted(!isHubMuted)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isHubMuted ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-600'}`}>{isHubMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}{isHubMuted ? 'Muted' : 'Audio On'}</button>
-                  </div>
+                  <div className="flex items-center justify-between mb-2"><h4 className="text-[11px] font-black text-indigo-500 uppercase tracking-[0.3em] flex items-center gap-3"><Clock size={16} /> Phase Cycles</h4></div>
                   <div className="space-y-8">
-                    <div className="space-y-4"><div className="flex justify-between items-center ml-1"><label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Focus Pulse (Min)</label><span className="text-xs font-black text-indigo-600">{focusDuration}m</span></div><input type="range" min="1" max="90" value={focusDuration} onChange={e => setFocusDuration(Number(e.target.value))} className="w-full accent-indigo-600 h-2 bg-slate-100 rounded-full appearance-none cursor-pointer" /></div>
+                    <div className="space-y-4"><div className="flex justify-between items-center ml-1"><label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Focus Pulse (Min)</label><span className="text-xs font-black text-indigo-600">{focusDuration}m</span></div><input type="range" min="5" max="90" value={focusDuration} onChange={e => setFocusDuration(Number(e.target.value))} className="w-full accent-indigo-600 h-2 bg-slate-100 rounded-full appearance-none cursor-pointer" /></div>
                     <div className="space-y-4"><div className="flex justify-between items-center ml-1"><label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Rest Cycle (Min)</label><span className="text-xs font-black text-emerald-600">{breakDuration}m</span></div><input type="range" min="1" max="30" value={breakDuration} onChange={e => setBreakDuration(Number(e.target.value))} className="w-full accent-emerald-500 h-2 bg-slate-100 rounded-full appearance-none cursor-pointer" /></div>
                   </div>
-                  <button onClick={() => setShowSettings(false)} className="w-full bg-slate-900 text-white py-7 rounded-[32px] font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-600 transition-all active:scale-95 flex items-center justify-center gap-3"><RefreshCw size={16} /> Update Params</button>
+                  <button onClick={() => { setShowSettings(false); resetTimer(); }} className="w-full bg-slate-900 text-white py-7 rounded-[32px] font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-600 transition-all active:scale-95 flex items-center justify-center gap-3"><RefreshCw size={16} /> Apply Settings</button>
                 </div>
                 <div className="bg-slate-50/80 border border-slate-100 rounded-[48px] p-10 space-y-8">
                   <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-3">Vault Control</h4>

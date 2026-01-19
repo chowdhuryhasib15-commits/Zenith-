@@ -1,14 +1,14 @@
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { NAV_ITEMS, AVATAR_SEEDS, EXPRESSIONS, getAvatarUrl } from '../constants';
 import { User, AppTheme, AppState } from '../types';
 import { 
   Menu, X, LogOut, ChevronUp, 
   Palette, Check, Smile, Frown, Angry, Zap, Laugh, User as UserIcon, Loader2, Upload,
-  Book, Monitor, Download, RefreshCw, FileJson, History, Trash2, Power,
-  Compass, Mountain, Sparkles, Camera, Briefcase, GraduationCap, Info, HelpCircle,
-  Clock, Target, ShieldCheck, Lock, Instagram, Facebook, Github, ExternalLink,
-  ChevronRight, BrainCircuit, Activity, Cpu
+  Book, Monitor, Download, RefreshCw, Trash2,
+  Sparkles, Camera, GraduationCap, Info,
+  Target, ShieldCheck, Lock, Instagram, Facebook, Github, ExternalLink,
+  BrainCircuit, Activity, Cpu, Globe, ArrowRight, Disc, Layers, ShieldAlert
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -105,9 +105,10 @@ const Sidebar: React.FC<SidebarProps> = ({
     reader.onload = (event) => {
       try {
         const importedData = JSON.parse(event.target?.result as string);
-        if (window.confirm("CRITICAL: This will overwrite current data. Continue?")) {
+        if (window.confirm("CRITICAL PROTOCOL: Overwrite current local data with imported matrix?")) {
           onRestore(importedData);
           alert("Vault restored successfully.");
+          setIsPickerOpen(false);
         }
       } catch (error) {
         alert("Invalid vault file.");
@@ -248,16 +249,16 @@ const Sidebar: React.FC<SidebarProps> = ({
                    <ZenithIcon className="w-10 h-10" />
                  </div>
                  <div>
-                   <h2 className="text-3xl font-black text-theme tracking-tight">
+                   <h2 className="text-3xl font-black text-theme tracking-tight leading-none">
                      {pickerTab === 'profile' ? 'Identity Studio' : pickerTab === 'manual' ? 'Operating Manual' : pickerTab === 'theme' ? 'Interface Theme' : pickerTab === 'about' ? 'Architect Reveal' : 'Sync & Vault'}
                    </h2>
-                   <p className="text-xs font-bold text-theme-secondary uppercase tracking-widest mt-1">Zenith Intelligence Portal</p>
+                   <p className="text-[10px] font-black text-theme-secondary uppercase tracking-[0.3em] mt-2">Zenith Intelligence Portal</p>
                  </div>
                </div>
                <button onClick={() => setIsPickerOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl text-theme-secondary transition-transform active:scale-90"><X size={24} /></button>
             </div>
 
-            <div className="flex gap-4 mb-8 shrink-0 border-b border-theme pb-4 overflow-x-auto no-scrollbar pr-4">
+            <div className="flex gap-3 mb-8 shrink-0 border-b border-theme pb-4 overflow-x-auto no-scrollbar pr-4">
                {[
                  { id: 'profile', label: 'Identity', icon: <UserIcon size={16} /> },
                  { id: 'manual', label: 'Manual', icon: <Book size={16} /> },
@@ -276,7 +277,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 flex-1 min-h-0 overflow-hidden pb-4">
                   <div className="lg:col-span-5 space-y-6 overflow-y-auto custom-scrollbar pr-4 pb-8">
                     <div className="bg-slate-50 border border-theme rounded-[40px] p-8 shadow-inner space-y-6">
-                       <h3 className="text-xs font-black text-indigo-500 uppercase tracking-[0.3em] mb-4">Manual Identity</h3>
+                       <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em] mb-4">Manual Identity Signature</h3>
                        
                        <div className="flex flex-col items-center gap-6">
                          <div className="relative group/avatar">
@@ -304,20 +305,20 @@ const Sidebar: React.FC<SidebarProps> = ({
                              <input type="number" className="w-full bg-white border border-theme rounded-2xl px-6 py-3.5 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all" value={tempProfile.age} onChange={e => setTempProfile({...tempProfile, age: Number(e.target.value)})} />
                            </div>
                            <div className="space-y-2">
-                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Education Status</label>
+                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Academic Level</label>
                              <input className="w-full bg-white border border-theme rounded-2xl px-6 py-3.5 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all" placeholder="e.g. HSC Student" value={tempProfile.education} onChange={e => setTempProfile({...tempProfile, education: e.target.value})} />
                            </div>
                          </div>
                        </div>
                     </div>
-                    <button onClick={applyChanges} className="w-full bg-slate-900 text-white py-6 rounded-[32px] font-black text-xs uppercase tracking-[0.3em] transition-all hover:bg-indigo-600 shadow-2xl flex items-center justify-center gap-3">
-                       <Check size={18} /> Apply Intelligence Update
+                    <button onClick={applyChanges} className="w-full bg-slate-900 text-white py-6 rounded-[32px] font-black text-[11px] uppercase tracking-[0.3em] transition-all hover:bg-indigo-600 shadow-2xl flex items-center justify-center gap-3">
+                       <Check size={18} /> Apply Identity Protocol
                     </button>
                   </div>
 
                   <div className="lg:col-span-7 flex flex-col min-h-0 bg-slate-50 border border-theme rounded-[40px] shadow-inner overflow-hidden">
                     <div className="p-8 pb-4 shrink-0">
-                      <h3 className="text-xs font-black text-indigo-500 uppercase tracking-[0.3em] mb-6">Zenith Cyber-Avatars</h3>
+                      <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em] mb-6">Zenith Bio-Avatar Matrix</h3>
                       <div className="flex flex-wrap gap-2 mb-2">
                          {EXPRESSIONS.map(expr => (
                            <button 
@@ -347,66 +348,245 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               ) : pickerTab === 'manual' ? (
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-6 pb-12 min-h-0">
-                   {/* Manual Content (unchanged) */}
-                   <div className="max-w-4xl space-y-16 py-4">
-                      <section className="space-y-10">
+                   <div className="max-w-4xl space-y-16 py-4 px-2 mx-auto">
+                      <section className="space-y-6">
                         <div className="flex items-center gap-6">
                           <div className="p-5 bg-indigo-600 text-white rounded-3xl shadow-xl shadow-indigo-100 animate-float"><Book size={32} /></div>
                           <div>
-                            <h3 className="text-4xl font-black text-slate-900 tracking-tighter">THE ZENITH PROTOCOL</h3>
-                            <p className="text-xs font-black text-slate-400 uppercase tracking-[0.4em] mt-2">Foundational Operating Intelligence</p>
+                            <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">The Zenith <br /><span className="text-indigo-600">Protocol.</span></h3>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-3">Advanced Operating Intelligence v2.0</p>
                           </div>
                         </div>
-                        <p className="text-lg text-slate-500 leading-relaxed font-medium">
-                          Zenith is more than a tracker; it's a high-fidelity laboratory for academic evolution. By leveraging Spaced Repetition (SRS) and Focus Momentum, it quantifies your cognitive growth.
+                        <p className="text-lg text-slate-600 leading-relaxed font-medium">
+                          Zenith is an elite cognitive orchestration layer designed for students seeking academic dominance. It combines Spaced Repetition algorithms, focus velocity tracking, and environmental audio masking to ensure maximum neural retention.
                         </p>
                       </section>
-                      {/* ... other manual sections */}
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        <div className="space-y-4">
+                           <div className="flex items-center gap-3 text-indigo-600">
+                             <Target size={24} />
+                             <h4 className="font-black uppercase tracking-widest text-[11px]">Neural Habitat (Garden)</h4>
+                           </div>
+                           <p className="text-sm text-slate-500 leading-relaxed">
+                             Consistency creates growth. Your digital Arboreatum reflects your streak maturity. Missing a daily focus goal triggers a dormancy sequence, resetting the evolutionary phase of your flora. Maintain consistency to unlock higher-tier foliage.
+                           </p>
+                        </div>
+                        <div className="space-y-4">
+                           <div className="flex items-center gap-3 text-emerald-600">
+                             <Activity size={24} />
+                             <h4 className="font-black uppercase tracking-widest text-[11px]">Focus Optimization (52/17)</h4>
+                           </div>
+                           <p className="text-sm text-slate-500 leading-relaxed">
+                             Utilizing the gold-standard 52-minute focus pulse and 17-minute restoration cycle. Integrated with Acoustic Hub masking, Zenith reduces cognitive friction by injecting optimized frequency layers into your workspace.
+                           </p>
+                        </div>
+                        <div className="space-y-4">
+                           <div className="flex items-center gap-3 text-violet-600">
+                             <Layers size={24} />
+                             <h4 className="font-black uppercase tracking-widest text-[11px]">Memory Spacing (SRS)</h4>
+                           </div>
+                           <p className="text-sm text-slate-500 leading-relaxed">
+                             Mastered chapters enter the Revision Lab. Using an expanding interval system (1-3-7-14-30), Zenith ensures knowledge is migrated from working memory to long-term neural pathways with minimal entropy.
+                           </p>
+                        </div>
+                        <div className="space-y-4">
+                           <div className="flex items-center gap-3 text-amber-600">
+                             <ShieldCheck size={24} />
+                             <h4 className="font-black uppercase tracking-widest text-[11px]">Vault Sovereignty</h4>
+                           </div>
+                           <p className="text-sm text-slate-500 leading-relaxed">
+                             Your academic data is your intellectual property. Zenith operates on a Local-First protocol. All data resides in encrypted client-side storage unless manually exported. Regularly download Vault backups for mission safety.
+                           </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-900 rounded-[40px] p-10 text-white relative overflow-hidden group">
+                         <div className="absolute top-0 right-0 p-10 opacity-5 rotate-12 transition-transform group-hover:rotate-0 duration-[4s]"><Cpu size={120} /></div>
+                         <h4 className="text-2xl font-black mb-4 flex items-center gap-3"><Zap className="text-indigo-400" /> Strategic Advice</h4>
+                         <p className="text-slate-400 text-sm leading-relaxed mb-8">
+                           Follow the "Neural Objectives" on your dashboard. These are AI-prioritized tasks calculated by analyzing your lowest-mastery subjects against upcoming exam pressure points. Execute these first for maximum impact.
+                         </p>
+                         <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.4em] text-indigo-500">
+                           Protocol Manual Termination Block // v1.08
+                         </div>
+                      </div>
                    </div>
                 </div>
               ) : pickerTab === 'theme' ? (
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 py-4 min-h-0">
-                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                      {THEMES.map((t) => (
-                        <button key={t.id} onClick={() => onUpdateTheme(t.id)} className={`flex flex-col text-left p-6 rounded-[32px] border-2 transition-all relative ${theme === t.id ? 'border-indigo-600 bg-indigo-50/50 shadow-xl' : 'border-theme bg-white hover:bg-slate-50'}`}>
-                          <div className={`w-12 h-12 rounded-2xl mb-4 shadow-inner ${t.color}`} />
-                          <h4 className="text-sm font-black text-theme uppercase tracking-tight">{t.label}</h4>
-                          <p className="text-[10px] font-bold text-theme-secondary mt-1">{t.desc}</p>
-                        </button>
-                      ))}
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-6 pb-12 min-h-0">
+                   <div className="max-w-4xl space-y-12 py-4 px-2 mx-auto">
+                      <section className="space-y-6">
+                        <div className="flex items-center gap-6">
+                          <div className="p-5 bg-slate-900 text-white rounded-3xl shadow-xl animate-float"><Monitor size={32} /></div>
+                          <div>
+                            <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">Interface <br /><span className="text-indigo-600">Theme.</span></h3>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-3">Chromatic Personalization Layer</p>
+                          </div>
+                        </div>
+                        <p className="text-lg text-slate-500 font-medium leading-relaxed max-w-2xl">
+                          Select a chromatic profile that optimizes your visual comfort and cognitive resonance. Each theme is engineered to enhance readability and reduce digital fatigue during high-intensity sessions.
+                        </p>
+                      </section>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {THEMES.map((t) => (
+                          <button 
+                            key={t.id} 
+                            onClick={() => onUpdateTheme(t.id)} 
+                            className={`flex flex-col text-left p-8 rounded-[40px] border-2 transition-all relative group h-full justify-between active:scale-[0.98] ${theme === t.id ? 'border-indigo-600 bg-indigo-50 shadow-2xl' : 'border-slate-100 bg-white hover:border-indigo-200 hover:shadow-lg'}`}
+                          >
+                            <div>
+                               <div className={`w-16 h-16 rounded-2xl mb-6 shadow-inner border border-black/5 group-hover:scale-110 transition-transform ${t.color}`} />
+                               <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight leading-none mb-2">{t.label}</h4>
+                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.desc}</p>
+                            </div>
+                            {theme === t.id && (
+                               <div className="mt-6 flex items-center gap-2 text-[10px] font-black text-indigo-600 uppercase tracking-widest">
+                                 <Check size={14} strokeWidth={3} /> Currently Active
+                               </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="p-8 bg-slate-50 rounded-[40px] border border-slate-100 flex items-center gap-6">
+                         <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm"><Sparkles size={20} className="text-indigo-500" /></div>
+                         <p className="text-xs font-bold text-slate-500 leading-relaxed uppercase tracking-widest">Chromatic shifts are synchronized instantly across all terminal views.</p>
+                      </div>
                    </div>
                 </div>
               ) : pickerTab === 'about' ? (
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-6 pb-12 min-h-0">
-                   {/* About Content */}
-                   <div className="max-w-4xl space-y-12 py-4">
+                   <div className="max-w-4xl space-y-12 py-4 px-2 mx-auto">
                       <div className="space-y-6">
-                        <h3 className="text-5xl font-black text-slate-900 tracking-tighter uppercase leading-none">Hasib <br /><span className="text-indigo-600">Chowdhury.</span></h3>
-                        <div className="flex flex-wrap gap-2">
-                           <span className="px-4 py-1.5 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest">UI/UX Designer</span>
-                           <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-200">AI Enthusiast</span>
+                        <div className="flex items-center gap-8">
+                           <div className="p-6 bg-slate-900 text-white rounded-[40px] shadow-2xl relative overflow-hidden border border-white/10 group">
+                              <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 to-transparent opacity-20" />
+                              <Sparkles size={40} className="relative z-10 animate-float" />
+                           </div>
+                           <div>
+                             <h3 className="text-5xl font-black text-slate-900 tracking-tighter uppercase leading-[0.9]">Hasib <br /><span className="text-indigo-600">Chowdhury.</span></h3>
+                             <div className="flex flex-wrap gap-2 mt-5">
+                                <span className="px-4 py-1.5 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest">Architect & Developer</span>
+                                <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-200">Creative Technologist</span>
+                             </div>
+                           </div>
                         </div>
+                        <p className="text-lg text-slate-500 font-medium leading-relaxed max-w-2xl">
+                          Passionate about engineering ultra-premium digital ecosystems that bridge the gap between heavy utility and world-class aesthetics. Zenith is the result of continuous refinement in academic workflow optimization.
+                        </p>
                       </div>
-                      {/* ... other about content */}
+
+                      {/* FEATURED PORTFOLIO SECTION */}
+                      <div className="space-y-6">
+                        <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] ml-1">Primary Terminal</h4>
+                        <a 
+                          href="https://hasib-designs1477.lovable.app/" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="group relative flex items-center justify-between p-10 bg-slate-900 rounded-[48px] overflow-hidden border border-white/5 transition-all hover:scale-[1.01] hover:shadow-2xl hover:shadow-indigo-500/20 shadow-xl"
+                        >
+                           <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                           <div className="absolute -right-20 -top-20 w-64 h-64 bg-indigo-500/10 blur-[100px] rounded-full group-hover:scale-150 transition-transform duration-[3s]" />
+                           
+                           <div className="relative z-10 flex items-center gap-8">
+                              <div className="w-20 h-20 bg-white/10 rounded-[32px] flex items-center justify-center border border-white/10 shadow-2xl group-hover:rotate-12 transition-transform">
+                                 <Globe size={40} className="text-indigo-400" />
+                              </div>
+                              <div>
+                                 <h4 className="text-3xl font-black text-white tracking-tighter">Main Portfolio.</h4>
+                                 <p className="text-indigo-300 font-bold uppercase tracking-[0.2em] text-[10px] mt-2">Explore the complete design suite</p>
+                              </div>
+                           </div>
+                           <div className="relative z-10 w-16 h-16 bg-white text-slate-900 rounded-full flex items-center justify-center shadow-2xl transition-all group-hover:bg-indigo-400 group-hover:text-white group-hover:translate-x-2">
+                              <ArrowRight size={28} />
+                           </div>
+                        </a>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                         {[
+                           { name: 'Instagram', url: 'https://www.instagram.com/drip.hasib/', icon: <Instagram size={20} />, color: 'bg-gradient-to-br from-pink-500 to-rose-500', desc: '@drip.hasib' },
+                           { name: 'Facebook', url: 'https://www.facebook.com/hasib.chowdhury.355138', icon: <Facebook size={20} />, color: 'bg-blue-600', desc: 'Hasib Chowdhury' },
+                           { name: 'GitHub', url: 'https://github.com/chowdhuryhasib15-commits', icon: <Github size={20} />, color: 'bg-slate-900', desc: 'chowdhuryhasib15' }
+                         ].map(social => (
+                           <a key={social.name} href={social.url} target="_blank" rel="noopener noreferrer" className="group flex flex-col p-8 bg-white rounded-[40px] border border-slate-100 hover:border-indigo-100 hover:shadow-2xl transition-all h-full justify-between gap-6">
+                              <div className={`w-14 h-14 ${social.color} text-white rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
+                                 {social.icon}
+                              </div>
+                              <div>
+                                <h5 className="font-black text-slate-900 uppercase tracking-widest text-[11px] mb-1">{social.name}</h5>
+                                <p className="text-[10px] font-bold text-slate-400">{social.desc}</p>
+                              </div>
+                              <ExternalLink size={16} className="text-slate-200 group-hover:text-indigo-600 transition-colors ml-auto" />
+                           </a>
+                         ))}
+                      </div>
+
+                      <div className="pt-10 border-t border-slate-100">
+                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] text-center">Architect Reveal Module Complete // v1.2</p>
+                      </div>
                    </div>
                 </div>
               ) : (
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 py-4 space-y-10 min-h-0">
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                      {/* Sync & Vault content */}
-                      <div className="bg-slate-900 rounded-[48px] p-10 text-white relative overflow-hidden group">
-                         <div className="relative z-10 flex flex-col h-full justify-between min-h-[300px]">
+                      {/* Export */}
+                      <div className="bg-slate-900 rounded-[48px] p-10 text-white relative overflow-hidden group border border-white/5 shadow-2xl">
+                         <div className="relative z-10 flex flex-col h-full justify-between min-h-[340px]">
                             <div>
-                               <div className="p-4 bg-white/10 rounded-3xl w-fit mb-6"><Download size={32} className="text-indigo-400" /></div>
-                               <h3 className="text-3xl font-black tracking-tighter">Export Vault</h3>
-                               <p className="text-slate-400 font-medium mt-2 leading-relaxed text-sm">Save your entire Zenith state to a portable JSON file for external backup.</p>
+                               <div className="p-4 bg-white/10 rounded-3xl w-fit mb-8 shadow-2xl"><Download size={32} className="text-indigo-400" /></div>
+                               <h3 className="text-4xl font-black tracking-tighter leading-none">Export <br />Vault.</h3>
+                               <p className="text-slate-400 font-medium mt-6 leading-relaxed text-sm">Securely bundle your entire cognitive academic state into a portable JSON matrix for absolute data sovereignty.</p>
                             </div>
-                            <button onClick={exportVault} disabled={isSyncing} className="w-full bg-white text-slate-900 py-6 rounded-[32px] font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-400 hover:text-white transition-all">
-                               {isSyncing ? <Loader2 size={20} className="animate-spin mx-auto" /> : 'Sync Out'}
+                            <button onClick={exportVault} disabled={isSyncing} className="w-full bg-white text-slate-900 py-6 rounded-[32px] font-black text-[11px] uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-400 hover:text-white transition-all active:scale-95 flex items-center justify-center gap-3">
+                               {isSyncing ? <Loader2 size={20} className="animate-spin" /> : <><Download size={18} /> Download Archive</>}
                             </button>
                          </div>
                       </div>
-                      {/* ... other sync content */}
+
+                      {/* Import */}
+                      <div className="bg-white rounded-[48px] p-10 border border-slate-100 shadow-xl relative overflow-hidden group">
+                         <div className="relative z-10 flex flex-col h-full justify-between min-h-[340px]">
+                            <div>
+                               <div className="p-4 bg-indigo-50 text-indigo-600 rounded-3xl w-fit mb-8 shadow-inner"><Upload size={32} /></div>
+                               <h3 className="text-4xl font-black text-slate-900 tracking-tighter leading-none">Import <br />Matrix.</h3>
+                               <p className="text-slate-500 font-medium mt-6 leading-relaxed text-sm">Inject a previously archived Zenith state to restore your neural metrics across any terminal.</p>
+                            </div>
+                            <input type="file" ref={importInputRef} className="hidden" accept=".json" onChange={handleImportVault} />
+                            <button onClick={() => importInputRef.current?.click()} className="w-full bg-slate-900 text-white py-6 rounded-[32px] font-black text-[11px] uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-600 transition-all active:scale-95 flex items-center justify-center gap-3">
+                               <Upload size={18} /> Load External Data
+                            </button>
+                         </div>
+                      </div>
+
+                      {/* Purge */}
+                      <div className="bg-rose-50/50 rounded-[48px] p-10 border border-rose-100 shadow-sm relative overflow-hidden group">
+                         <div className="relative z-10 flex flex-col h-full justify-between min-h-[340px]">
+                            <div>
+                               <div className="p-4 bg-rose-100 text-rose-600 rounded-3xl w-fit mb-8 shadow-inner"><Trash2 size={32} /></div>
+                               <h3 className="text-4xl font-black text-rose-900 tracking-tighter leading-none">System <br />Purge.</h3>
+                               <p className="text-rose-600/70 font-medium mt-6 leading-relaxed text-sm">Hard reset all local storage layers. This protocol is irreversible and destroys all mission data instantly.</p>
+                            </div>
+                            <button onClick={factoryReset} className="w-full bg-rose-600 text-white py-6 rounded-[32px] font-black text-[11px] uppercase tracking-[0.3em] shadow-2xl hover:bg-rose-900 transition-all active:scale-95 flex items-center justify-center gap-3 group/purge">
+                               <ShieldAlert size={18} className="group-hover:animate-pulse" /> Initialize Purge
+                            </button>
+                         </div>
+                      </div>
+                   </div>
+                   
+                   <div className="p-10 bg-slate-50 rounded-[48px] border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-8">
+                      <div className="flex items-center gap-6">
+                         <div className="p-4 bg-white rounded-3xl shadow-sm"><ShieldCheck size={32} className="text-emerald-500" /></div>
+                         <div>
+                            <h4 className="text-xl font-black text-slate-900">Local Isolation Protocol</h4>
+                            <p className="text-sm text-slate-500 font-medium">Data resides strictly within your client-side encrypted storage layers.</p>
+                         </div>
+                      </div>
+                      <div className="flex items-center gap-2 px-6 py-3 bg-white rounded-full border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                         <Lock size={14} /> End-to-End Environment Encryption
+                      </div>
                    </div>
                 </div>
               )}
