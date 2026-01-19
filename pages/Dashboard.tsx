@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { AppState, Subject, Chapter, StudyTask } from '../types';
+import { AppState, Subject, Chapter, StudyTask, Goal } from '../types';
 import { ICONS } from '../constants';
 import { getStudyInsights, getDailyStudyPlan, getDynamicGreeting } from '../services/geminiService';
-import { Timer, Edit2, X, AlertCircle, Zap, Brain, ChevronRight, Sparkles, GraduationCap, UserCircle, Download, ShieldCheck, RefreshCw, ListTodo, Clock, Sprout, Flower2, Leaf, Target, TrendingUp } from 'lucide-react';
+import { Timer, Edit2, X, AlertCircle, Zap, Brain, ChevronRight, Sparkles, GraduationCap, UserCircle, Download, ShieldCheck, RefreshCw, ListTodo, Clock, Sprout, Flower2, Leaf, Target, TrendingUp, CheckCircle2, Circle, AlertTriangle } from 'lucide-react';
 
 interface DashboardProps {
   state: AppState;
@@ -28,7 +28,7 @@ export const NeuralGarden = ({ streak, isWilted, scale = 1 }: { streak: number; 
   
   return (
     <div className="relative w-full h-56 flex flex-col justify-end items-center perspective-1000 overflow-visible">
-      {/* UI Labels - Added more left padding to prevent clipping on curved corners */}
+      {/* UI Labels */}
       <div className="absolute top-0 left-8 z-30 text-left pointer-events-none">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] whitespace-nowrap">Zenith Arboreatum</p>
         <p className={`text-xl font-black ${isWilted ? 'text-amber-700' : 'text-slate-900'} tracking-tighter whitespace-nowrap`}>
@@ -56,7 +56,6 @@ export const NeuralGarden = ({ streak, isWilted, scale = 1 }: { streak: number; 
             </div>
           ) : (
             <div className="flex flex-col items-center mb-2">
-               {/* Stage 5: Majestic Bloom */}
                {levels >= 5 && (
                  <div className="relative animate-bounce duration-[4s] mb-[-6px] z-20">
                    <Flower2 size={40} className="text-violet-600 drop-shadow-[0_0_12px_rgba(139,92,246,0.6)]" />
@@ -64,7 +63,6 @@ export const NeuralGarden = ({ streak, isWilted, scale = 1 }: { streak: number; 
                  </div>
                )}
                
-               {/* Stage 4: Flowering Shrub */}
                {levels >= 4 && (
                  <div className="relative flex gap-2 mb-[-4px] z-10 animate-in zoom-in slide-in-from-bottom-4 duration-1000">
                    <Flower2 size={24} className="text-indigo-400 opacity-60 -rotate-12" />
@@ -72,7 +70,6 @@ export const NeuralGarden = ({ streak, isWilted, scale = 1 }: { streak: number; 
                  </div>
                )}
 
-               {/* Stage 3: Lush Foliage */}
                {levels >= 3 && (
                  <div className="flex gap-2 animate-in zoom-in slide-in-from-bottom-2 duration-700">
                     <Leaf size={24} className="text-indigo-400 rotate-45 translate-x-2" />
@@ -80,7 +77,6 @@ export const NeuralGarden = ({ streak, isWilted, scale = 1 }: { streak: number; 
                  </div>
                )}
 
-               {/* Stage 2: Strong Stem */}
                {levels >= 2 && (
                  <div className="w-2 h-20 bg-gradient-to-t from-slate-200 to-indigo-500 rounded-full shadow-inner relative">
                     <div className="absolute top-4 -left-5 rotate-[-45deg] scale-90 opacity-80"><Leaf size={18} className="text-indigo-300" /></div>
@@ -88,7 +84,6 @@ export const NeuralGarden = ({ streak, isWilted, scale = 1 }: { streak: number; 
                  </div>
                )}
 
-               {/* Stage 1: New Sprout */}
                {levels === 1 && (
                  <div className="animate-pulse mb-2">
                    <Sprout size={36} className="text-indigo-500 drop-shadow-[0_0_8px_rgba(99,102,241,0.3)]" />
@@ -107,7 +102,6 @@ const REVISION_INTERVALS = [1, 3, 7, 14, 30];
 const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadline, onSetStudyPlan }) => {
   const [insights, setInsights] = useState<string[]>([]);
   const [loadingInsights, setLoadingInsights] = useState(false);
-  const [loadingPlan, setLoadingPlan] = useState(false);
   const [isEditingDeadline, setIsEditingDeadline] = useState(false);
   const [tempDeadline, setTempDeadline] = useState(state.syllabusDeadline || '');
   const [timeLeft, setTimeLeft] = useState<{ mo: number; d: number; h: number } | null>(null);
@@ -130,19 +124,6 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
     };
     fetchInsights();
   }, [state.pomodoroLogs.length, state.exams.length, state.user]);
-
-  const fetchDailyPlan = async () => {
-    setLoadingPlan(true);
-    const plan = await getDailyStudyPlan(state);
-    onSetStudyPlan(plan);
-    setLoadingPlan(false);
-  };
-
-  useEffect(() => {
-    if (!state.currentStudyPlan || state.currentStudyPlan.length === 0) {
-      fetchDailyPlan();
-    }
-  }, []);
 
   useEffect(() => {
     if (!state.syllabusDeadline) {
@@ -198,6 +179,42 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
     return queue.sort((a, b) => b.dueInDays - a.dueInDays).slice(0, 5);
   }, [state.subjects]);
 
+  const pendingGoals = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const todayStr = now.toISOString().split('T')[0];
+
+    return state.goals.filter(goal => {
+      const gDate = new Date(goal.date);
+      gDate.setHours(0, 0, 0, 0);
+      const gDateStr = gDate.toISOString().split('T')[0];
+
+      // CRITICAL: Hide future tasks from the dashboard
+      if (gDate > now) return false;
+
+      const isToday = gDateStr === todayStr;
+
+      if (goal.recurrence === 'none') {
+        // Show if not done (either today or from previous days)
+        return !goal.isDone;
+      } else {
+        // Recurring Goals
+        const alreadyDoneToday = goal.completedDates?.includes(todayStr);
+        if (alreadyDoneToday) return false;
+
+        // Only show if it's due today based on its recurrence type
+        if (goal.recurrence === 'daily') return true;
+        if (goal.recurrence === 'weekly') return now.getDay() === gDate.getDay();
+        if (goal.recurrence === 'monthly') return now.getDate() === gDate.getDate();
+        
+        return false;
+      }
+    }).map(goal => ({
+      ...goal,
+      isOverdue: new Date(goal.date).setHours(0,0,0,0) < now.getTime() && goal.recurrence === 'none'
+    })).slice(0, 8);
+  }, [state.goals]);
+
   const totalChapters = state.subjects.reduce((acc, s) => acc + s.chapters.length, 0);
   const completedChapters = state.subjects.reduce((acc, s) => acc + s.chapters.filter(c => c.isCompleted).length, 0);
   const progressPercent = totalChapters === 0 ? 0 : Math.round((completedChapters / totalChapters) * 100);
@@ -206,17 +223,10 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
   const gradedExams = state.exams.filter(e => e.isGraded);
   const averageResult = gradedExams.length === 0 ? 0 : Math.round((gradedExams.reduce((acc, r) => acc + ((r.obtainedMarks || 0) / (r.totalMarks || 1)), 0) / gradedExams.length) * 100);
 
-  // Garden logic: check if goal was hit today
   const isWilted = useMemo(() => {
     if (!state.goalLastUpdated) return false;
-    // Streak logic already handled in App.tsx reset, but visual dormancy check:
     return state.gardenStreak === 0 && !!state.dailyFocusGoal;
   }, [state.gardenStreak, state.dailyFocusGoal]);
-
-  const radius = 72;
-  const strokeWidth = 14;
-  const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference - (progressPercent / 100) * circumference;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -246,7 +256,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
 
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 stagger-child-reveal">
         <div className="lg:col-span-8 bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm relative overflow-hidden flex flex-col justify-between min-h-[360px]">
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/5 to-transparent pointer-events-none" />
           <div className="relative z-10">
             <div className="mb-6 max-w-2xl group/quote border-l-4 border-indigo-100 pl-5 py-1 min-h-[48px]">
               {dynamicGreeting ? (
@@ -312,58 +322,75 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
         </div>
       </section>
 
-      {/* AI STUDY PLAN SECTION */}
+      {/* PENDING GOALS SECTION - Filtered for today and past incomplete only */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 stagger-child-reveal" style={{ animationDelay: '0.1s' }}>
         <div className="lg:col-span-12 bg-white rounded-[48px] border border-slate-100 shadow-sm p-10 overflow-hidden relative group">
-          <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-[3s]"><Brain size={120} className="text-indigo-600" /></div>
+          <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-[3s]"><ListTodo size={120} className="text-indigo-600" /></div>
           
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 relative z-10">
              <div className="flex items-center gap-5">
-                <div className="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-100 animate-float"><ListTodo size={28} /></div>
+                <div className="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-100 animate-float"><Target size={28} /></div>
                 <div>
-                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">Daily Neural Objectives</h3>
-                  <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] mt-1">AI-Powered High-Priority Tasks</p>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">Active Objectives</h3>
+                  <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] mt-1">Incomplete Missions: Today & History</p>
                 </div>
              </div>
-             <button onClick={fetchDailyPlan} disabled={loadingPlan} className="flex items-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-3xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 transition-all active:scale-95 shadow-lg">
-                {loadingPlan ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16} />} 
-                Regenerate Plan
+             <button onClick={() => onNavigate('goals')} className="flex items-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-3xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 transition-all active:scale-95 shadow-lg">
+                View Full Planner
+                <ChevronRight size={16} />
              </button>
           </div>
 
-          {loadingPlan ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
-               {[1, 2, 3, 4].map(i => <div key={i} className="h-40 bg-slate-50 rounded-[32px] border border-slate-100" />)}
-            </div>
-          ) : state.currentStudyPlan && state.currentStudyPlan.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-               {state.currentStudyPlan.map((task) => (
-                 <div key={task.id} className="bg-slate-50/50 hover:bg-white p-6 rounded-[32px] border border-transparent hover:border-indigo-100 transition-all hover:shadow-xl hover:shadow-indigo-100/20 group/task">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
+             {pendingGoals.length > 0 ? pendingGoals.map((goal: any) => (
+               <button 
+                 key={goal.id} 
+                 onClick={() => onNavigate('goals')}
+                 className="bg-slate-50/50 hover:bg-white p-6 rounded-[32px] border border-transparent hover:border-indigo-100 transition-all hover:shadow-xl hover:shadow-indigo-100/20 group/task text-left flex flex-col justify-between min-h-[140px]"
+               >
+                  <div>
                     <div className="flex justify-between items-start mb-4">
-                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${task.priority === 'Critical' ? 'bg-rose-100 text-rose-600' : task.priority === 'Focus' ? 'bg-indigo-100 text-indigo-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                          {task.priority}
+                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${goal.category === 'Study' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                          {goal.category}
                        </span>
-                       <div className="flex items-center gap-1.5 text-slate-400 group-hover/task:text-indigo-500 transition-colors">
-                          <Clock size={12} />
-                          <span className="text-[10px] font-black">{task.estimatedTime}</span>
+                       <div className={`transition-colors ${goal.isOverdue ? 'text-amber-500' : 'text-slate-200 group-hover/task:text-indigo-200'}`}>
+                          {goal.isOverdue ? <AlertTriangle size={18} /> : <Circle size={20} />}
                        </div>
                     </div>
-                    <p className="text-sm font-bold text-slate-700 leading-relaxed mb-4">{task.task}</p>
-                    <button className="w-full py-3 bg-white border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-all">Mark Ready</button>
-                 </div>
-               ))}
-            </div>
-          ) : (
-            <div className="text-center py-20 bg-slate-50/50 rounded-[40px] border-4 border-dashed border-slate-100">
-               <p className="text-sm font-black text-slate-300 uppercase tracking-[0.4em] italic">No active protocol</p>
-            </div>
-          )}
+                    <p className="text-sm font-bold text-slate-700 leading-relaxed line-clamp-2">{goal.text}</p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-slate-400 group-hover/task:text-indigo-500 transition-colors">
+                       <Clock size={10} />
+                       <span className="text-[9px] font-black uppercase tracking-widest">
+                         {goal.recurrence === 'none' ? (goal.isOverdue ? 'Overdue' : 'Due Today') : `${goal.recurrence} Loop`}
+                       </span>
+                    </div>
+                    {goal.isOverdue && <span className="text-[8px] font-black text-amber-600 uppercase tracking-tighter bg-amber-50 px-2 py-0.5 rounded-full">Pending Archive</span>}
+                  </div>
+               </button>
+             )) : (
+               <div className="col-span-full text-center py-16 bg-slate-50/50 rounded-[40px] border-4 border-dashed border-slate-100">
+                  <CheckCircle2 size={40} className="mx-auto text-emerald-300 mb-4 opacity-50" />
+                  <p className="text-sm font-black text-slate-300 uppercase tracking-[0.4em] italic">All objectives cleared</p>
+               </div>
+             )}
+          </div>
         </div>
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 stagger-child-reveal" style={{ animationDelay: '0.2s' }}>
         <div className="lg:col-span-7 bg-white p-10 rounded-[48px] border border-slate-100 shadow-sm">
-          <div className="flex items-center justify-between mb-8"><div className="flex items-center gap-4"><div className="p-3 bg-violet-100 text-violet-600 rounded-2xl shadow-sm"><Brain size={24} /></div><div><h3 className="text-xl font-black text-slate-900 tracking-tight">Revision Queue</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Spaced Repetition Schedule</p></div></div><button onClick={() => onNavigate('revision')} className="text-xs font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 transition-colors">Lab</button></div>
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-violet-100 text-violet-600 rounded-2xl shadow-sm"><Brain size={24} /></div>
+              <div>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Revision Queue</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Spaced Repetition Schedule</p>
+              </div>
+            </div>
+            <button onClick={() => onNavigate('revision')} className="text-xs font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 transition-colors">Lab</button>
+          </div>
           <div className="space-y-4">
             {revisionQueue.length > 0 ? revisionQueue.map((chap) => (
               <div key={`${chap.subjectId}-${chap.id}`} className="flex items-center justify-between p-5 bg-slate-50/50 rounded-3xl hover:bg-white border border-transparent hover:border-violet-100 hover:shadow-xl hover:shadow-violet-100/20 transition-all duration-300">
@@ -374,7 +401,8 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate, onUpdateDeadli
         <div className="lg:col-span-5 space-y-8">
           <div className="bg-slate-900 text-white p-9 rounded-[48px] shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-[2s]"><Sparkles size={80} /></div>
-            <div className="relative z-10"><div className="flex items-center gap-3 mb-8"><div className="p-2.5 bg-white/10 rounded-xl text-indigo-300 shadow-inner">{ICONS.AI}</div><h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-300">Zenith AI</h3></div>
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-8"><div className="p-2.5 bg-white/10 rounded-xl text-indigo-300 shadow-inner">{ICONS.AI}</div><h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-300">Zenith AI</h3></div>
               {loadingInsights ? <div className="space-y-5 animate-pulse"><div className="h-2.5 bg-white/10 rounded-full w-full" /><div className="h-2.5 bg-white/10 rounded-full w-4/5" /></div> : <ul className="space-y-6">{insights.map((insight, i) => <li key={i} className="flex gap-5 text-sm font-medium text-slate-300 leading-relaxed group/item hover:translate-x-2 transition-transform"><div className="w-2 h-2 bg-indigo-500 rounded-full mt-2 shrink-0 shadow-lg" />{insight}</li>)}</ul>}
             </div>
           </div>
