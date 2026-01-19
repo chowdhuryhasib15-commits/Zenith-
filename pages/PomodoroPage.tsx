@@ -10,7 +10,8 @@ import {
   Settings2, CheckCircle2, Flame, Trophy, Clock, Trash2, 
   Download, RefreshCw, Lock, ChevronDown, Volume2, VolumeX,
   TrendingUp, Activity, CloudRain, Music, Wind, Youtube, Disc, ListMusic, ChevronRight, ShieldCheck, 
-  Radio, Volume1, Signal, Zap, SignalHigh, SignalMedium, SignalLow, Waves, BarChart3
+  Radio, Volume1, Signal, Zap, SignalHigh, SignalMedium, SignalLow, Waves, BarChart3,
+  PieChart as PieChartIcon
 } from 'lucide-react';
 
 interface PomodoroPageProps {
@@ -342,7 +343,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
       
       <section className={`flex flex-col items-center justify-center transition-all duration-1000 ${isActive ? 'scale-110 flex-1' : ''}`}>
         {!isActive && (
-          <div className={`mb-12 w-full max-w-sm animate-in fade-in slide-in-from-top-6 transition-all duration-500 ${hasTriedToStart ? 'scale-105' : ''}`}>
+          <div className={`mb-12 w-full max-sm animate-in fade-in slide-in-from-top-6 transition-all duration-500 ${hasTriedToStart ? 'scale-105' : ''}`}>
             <label className={`block text-[10px] font-black uppercase tracking-[0.3em] mb-4 text-center transition-colors ${hasTriedToStart ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`}>
               {hasTriedToStart ? 'Domain Selection Required' : 'Current Domain'}
             </label>
@@ -475,13 +476,13 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                             </Pie>
                             <Tooltip 
                               contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
-                              formatter={(value: number) => `${value} min`}
+                              formatter={(value: any) => `${value} min`}
                             />
                           </PieChart>
                         </ResponsiveContainer>
                       ) : (
                         <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4">
-                           <PieChart className="opacity-20" size={48} />
+                           <PieChartIcon className="opacity-20" size={48} />
                            <p className="text-[10px] font-black uppercase tracking-widest">No Distribution Data</p>
                         </div>
                       )}
@@ -503,7 +504,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                     <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8">Detailed Breakdown</h3>
                     <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-4">
                        {subjectDistributionData.map((item, i) => {
-                         const percentage = Math.round((item.minutes / totalFocusMinutes) * 100);
+                         const percentage = Math.round((item.minutes / (totalFocusMinutes || 1)) * 100);
                          return (
                            <div key={i} className="group">
                              <div className="flex justify-between items-center mb-2">

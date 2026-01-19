@@ -34,7 +34,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   const [examForm, setExamForm] = useState({
     subjectId: '',
     date: new Date().toISOString().split('T')[0],
-    priority: 'Medium' as const,
+    priority: 'Medium' as 'High' | 'Medium' | 'Low',
     type: ''
   });
 
@@ -508,7 +508,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
       {/* MODAL: GRADE EXAM (Post-Mission) */}
       {gradingExamId && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xl z-[200] flex items-center justify-center p-4 animate-in fade-in">
-           <div className="bg-white p-12 rounded-[56px] shadow-2xl max-w-md w-full relative animate-in zoom-in-95 overflow-hidden">
+           <div className="bg-white p-12 rounded-[56px] shadow-2xl max-md w-full relative animate-in zoom-in-95 overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-emerald-500 to-indigo-500" />
               <button onClick={() => setGradingExamId(null)} className="absolute top-10 right-10 p-3 hover:bg-slate-100 rounded-2xl transition-transform active:scale-90"><X size={24} /></button>
               <h2 className="text-3xl font-black tracking-tight text-slate-900 mb-2">Grade Archive</h2>
