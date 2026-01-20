@@ -11,7 +11,7 @@ import {
   Download, RefreshCw, Lock, ChevronDown, Volume2, VolumeX,
   TrendingUp, Activity, CloudRain, Music, Wind, Youtube, Disc, ListMusic, ShieldCheck, 
   Radio, SignalHigh, SignalMedium, SignalLow, Waves, BarChart3,
-  PieChart as PieChartIcon, Command
+  PieChart as PieChartIcon, Command, Calendar
 } from 'lucide-react';
 import { ICONS } from '../constants';
 
@@ -28,6 +28,14 @@ const AMBIENT_PRESETS = [
   { id: 'rain', label: 'Deep Rain', icon: <CloudRain size={20} />, ytId: 'mPZkdNFkNps' }, 
   { id: 'noise', label: 'White Noise', icon: <Wind size={20} />, ytId: 'nMfPqeZjc2c' }, 
 ];
+
+const formatDuration = (mins: number) => {
+  if (mins >= 60) {
+    const hours = mins / 60;
+    return hours % 1 === 0 ? `${hours}h` : `${hours.toFixed(1)}h`;
+  }
+  return `${mins}m`;
+};
 
 const Visualizer = ({ isActive, volume, isMuted, color = "bg-indigo-400" }: { isActive: boolean; volume: number; isMuted: boolean; color?: string }) => {
   const intensity = isMuted ? 0 : volume / 100;
@@ -75,7 +83,6 @@ const DynamicSignalIcon = ({ volume, isMuted }: { volume: number, isMuted: boole
 };
 
 const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs, fullState, onRestore }) => {
-  // Timer State - Default Focus to 25m, Break to 5m
   const [focusDuration, setFocusDuration] = useState(25);
   const [breakDuration, setBreakDuration] = useState(5);
   const [minutes, setMinutes] = useState(25);
@@ -87,8 +94,8 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   const [hasTriedToStart, setHasTriedToStart] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
-  // Audio Hub State
   const [activeTab, setActiveTab] = useState<'stats' | 'audio'>('stats');
+  const [statsTimeframe, setStatsTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [selectedAmbient, setSelectedAmbient] = useState<string | null>(null);
   const [customYtUrl, setCustomYtUrl] = useState('');
   const [playingYtId, setPlayingYtId] = useState<string | null>(null);
@@ -181,10 +188,8 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     }
   }, [focusDuration, breakDuration, mode, isActive]);
 
-  // HIGH ACCURACY TIMER ENGINE
   useEffect(() => {
     if (isActive) {
-      // Calculate absolute target time to prevent drift from state update lag
       const targetTime = Date.now() + (minutes * 60 + seconds) * 1000;
       
       timerRef.current = setInterval(() => {
@@ -202,7 +207,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
           setMinutes(Math.floor(diff / 60));
           setSeconds(diff % 60);
         }
-      }, 200); // Check 5 times a second for snappy UI
+      }, 200);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isActive, mode, selectedSub, focusDuration, onComplete]);
@@ -244,40 +249,33 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     }
   }, [mode, selectedSub, focusDuration, onComplete]);
 
-  // Keyboard Shortcuts Implementation with focus conflict resolution
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if user is typing in an input
       if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
         if (e.key === 'Escape') (document.activeElement as HTMLElement).blur();
         return;
       }
 
       switch (e.key.toLowerCase()) {
-        case ' ': // Space
+        case ' ':
           e.preventDefault();
-          // If a button is focused, space would click it. Blur it to prevent double-toggle.
           if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-          
-          if (isActive) {
-            setIsActive(false);
-          } else {
-            startTimer();
-          }
+          if (isActive) setIsActive(false);
+          else startTimer();
           break;
-        case 'r': // Reset
+        case 'r':
           if (!isActive || window.confirm("Abort mission?")) resetTimer();
           break;
-        case 'f': // Finish early
+        case 'f':
           if (isActive) handleFinishEarly();
           break;
-        case 's': // Settings
+        case 's':
           setShowSettings(prev => !prev);
           break;
-        case 'b': // Switch to Break
+        case 'b':
           if (!isActive) handleModeChange('break');
           break;
-        case 'w': // Switch to Focus (Work)
+        case 'w':
           if (!isActive) handleModeChange('focus');
           break;
         case 'escape':
@@ -310,24 +308,53 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
 
   const totalFocusMinutes = useMemo(() => logs.reduce((acc, l) => acc + l.duration, 0), [logs]);
 
-  const dailyData = useMemo(() => {
-    const last7Days = [...Array(7)].map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      return d.toDateString();
-    }).reverse();
-    return last7Days.map(dateStr => {
-      const total = logs.filter(l => new Date(l.timestamp).toDateString() === dateStr).reduce((acc, l) => acc + l.duration, 0);
-      return { name: dateStr.split(' ')[0], minutes: total };
-    });
-  }, [logs]);
+  const chartData = useMemo(() => {
+    if (statsTimeframe === 'daily') {
+      const last7Days = [...Array(7)].map((_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        return d.toDateString();
+      }).reverse();
+      return last7Days.map(dateStr => {
+        const total = logs.filter(l => new Date(l.timestamp).toDateString() === dateStr).reduce((acc, l) => acc + l.duration, 0);
+        return { name: dateStr.split(' ')[0], minutes: total };
+      });
+    } else if (statsTimeframe === 'weekly') {
+      const last4Weeks = [...Array(4)].map((_, i) => {
+        const end = new Date();
+        end.setDate(end.getDate() - (i * 7));
+        const start = new Date(end);
+        start.setDate(start.getDate() - 6);
+        return { start, end, label: `Week ${4-i}` };
+      }).reverse();
+      return last4Weeks.map(week => {
+        const total = logs.filter(l => {
+          const d = new Date(l.timestamp);
+          return d >= week.start && d <= week.end;
+        }).reduce((acc, l) => acc + l.duration, 0);
+        return { name: week.label, minutes: total };
+      });
+    } else {
+      const last6Months = [...Array(6)].map((_, i) => {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        return { month: d.getMonth(), year: d.getFullYear(), label: d.toLocaleString('default', { month: 'short' }) };
+      }).reverse();
+      return last6Months.map(m => {
+        const total = logs.filter(l => {
+          const d = new Date(l.timestamp);
+          return d.getMonth() === m.month && d.getFullYear() === m.year;
+        }).reduce((acc, l) => acc + l.duration, 0);
+        return { name: m.label, minutes: total };
+      });
+    }
+  }, [logs, statsTimeframe]);
 
   const subjectDistributionData = useMemo(() => {
     const map: Record<string, { minutes: number; color: string }> = {};
     logs.forEach(log => {
       const sub = subjects.find(s => s.id === log.subjectId);
       const rawName = sub?.name || 'Deleted';
-      // Aggregation logic: strip "1st Paper" or "2nd Paper" to show only the subject
       const name = rawName.replace(/\s*(1st|2nd)?\s*Paper/gi, '').trim();
       const color = sub?.color || '#cbd5e1';
       if (!map[name]) map[name] = { minutes: 0, color };
@@ -471,19 +498,44 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
             {activeTab === 'stats' ? (
               <div className="space-y-8">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                  <div className="lg:col-span-8 bg-white p-10 rounded-[56px] border border-slate-100 shadow-sm h-[400px]">
-                    <div className="flex items-center justify-between mb-8">
-                      <div className="flex items-center gap-4"><div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><Activity size={24} /></div><div><h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Focus Velocity</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Rolling 7-Day Performance</p></div></div>
-                      <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest"><TrendingUp size={14} /> Active</div>
+                  <div className="lg:col-span-8 bg-white p-10 rounded-[56px] border border-slate-100 shadow-sm min-h-[480px]">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                      <div className="flex items-center gap-4">
+                        <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><Activity size={24} /></div>
+                        <div>
+                          <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Focus Velocity</h3>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Retrospective Cognitive Pulse</p>
+                        </div>
+                      </div>
+                      <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-200 shadow-inner">
+                        {(['daily', 'weekly', 'monthly'] as const).map(t => (
+                          <button 
+                            key={t}
+                            onClick={() => setStatsTimeframe(t)}
+                            className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${statsTimeframe === t ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <div className="h-[280px]">
+                    <div className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={dailyData}>
+                        <AreaChart data={chartData}>
                           <defs><linearGradient id="pomoGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#94a3b8' }} />
-                          <YAxis hide />
-                          <Tooltip cursor={{ stroke: '#6366f1', strokeWidth: 2, strokeDasharray: '5 5' }} contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)' }} />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontBold: 900, fill: '#94a3b8' }} />
+                          <YAxis 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fontSize: 10, fill: '#94a3b8' }} 
+                            tickFormatter={(val) => formatDuration(val)}
+                          />
+                          <Tooltip 
+                            cursor={{ stroke: '#6366f1', strokeWidth: 2, strokeDasharray: '5 5' }} 
+                            formatter={(value: number) => [formatDuration(value), 'Focus Time']}
+                            contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)' }} 
+                          />
                           <Area type="monotone" dataKey="minutes" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#pomoGrad)" />
                         </AreaChart>
                       </ResponsiveContainer>
@@ -498,7 +550,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                     <div className="bg-indigo-600 text-white p-8 rounded-[40px] flex items-center gap-6 shadow-xl relative overflow-hidden group">
                       <div className="absolute bottom-0 right-0 p-12 opacity-10 group-hover:rotate-12 transition-transform duration-700"><Trophy size={120} /></div>
                       <Trophy className="text-indigo-200 relative z-10" size={32} />
-                      <div className="relative z-10"><p className="text-4xl font-black tabular-nums leading-none tracking-tighter">{Math.round(totalFocusMinutes / 60)}h</p><p className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.3em] mt-2">Total Focus</p></div>
+                      <div className="relative z-10"><p className="text-4xl font-black tabular-nums leading-none tracking-tighter">{formatDuration(totalFocusMinutes)}</p><p className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.3em] mt-2">Total Focus</p></div>
                     </div>
                   </div>
                 </div>
@@ -538,7 +590,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                                   <span className="text-sm font-bold text-slate-700">{item.name}</span>
                                </div>
                                <div className="text-right">
-                                  <span className="text-xs font-black text-slate-900">{item.minutes}m</span>
+                                  <span className="text-xs font-black text-slate-900">{formatDuration(item.minutes)}</span>
                                   <span className="text-[10px] font-bold text-slate-400 block">{percentage}%</span>
                                </div>
                              </div>
