@@ -306,7 +306,24 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     return streak;
   }, [logs]);
 
-  const totalFocusMinutes = useMemo(() => logs.reduce((acc, l) => acc + l.duration, 0), [logs]);
+  // filteredLogs based on the active toggle
+  const filteredLogsForStats = useMemo(() => {
+    const now = new Date();
+    if (statsTimeframe === 'daily') {
+      const todayStr = now.toDateString();
+      return logs.filter(l => new Date(l.timestamp).toDateString() === todayStr);
+    } else if (statsTimeframe === 'weekly') {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return logs.filter(l => new Date(l.timestamp) >= weekAgo);
+    } else {
+      const monthAgo = new Date();
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+      return logs.filter(l => new Date(l.timestamp) >= monthAgo);
+    }
+  }, [logs, statsTimeframe]);
+
+  const totalFocusMinutes = useMemo(() => filteredLogsForStats.reduce((acc, l) => acc + l.duration, 0), [filteredLogsForStats]);
 
   const chartData = useMemo(() => {
     if (statsTimeframe === 'daily') {
@@ -352,7 +369,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
 
   const subjectDistributionData = useMemo(() => {
     const map: Record<string, { minutes: number; color: string }> = {};
-    logs.forEach(log => {
+    filteredLogsForStats.forEach(log => {
       const sub = subjects.find(s => s.id === log.subjectId);
       const rawName = sub?.name || 'Deleted';
       const name = rawName.replace(/\s*(1st|2nd)?\s*Paper/gi, '').trim();
@@ -363,7 +380,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     return Object.entries(map)
       .map(([name, data]) => ({ name, minutes: data.minutes, color: data.color }))
       .sort((a, b) => b.minutes - a.minutes);
-  }, [logs, subjects]);
+  }, [filteredLogsForStats, subjects]);
 
   const handleCustomYtSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -550,14 +567,17 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                     <div className="bg-indigo-600 text-white p-8 rounded-[40px] flex items-center gap-6 shadow-xl relative overflow-hidden group">
                       <div className="absolute bottom-0 right-0 p-12 opacity-10 group-hover:rotate-12 transition-transform duration-700"><Trophy size={120} /></div>
                       <Trophy className="text-indigo-200 relative z-10" size={32} />
-                      <div className="relative z-10"><p className="text-4xl font-black tabular-nums leading-none tracking-tighter">{formatDuration(totalFocusMinutes)}</p><p className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.3em] mt-2">Total Focus</p></div>
+                      <div className="relative z-10"><p className="text-4xl font-black tabular-nums leading-none tracking-tighter">{formatDuration(totalFocusMinutes)}</p><p className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.3em] mt-2">{statsTimeframe === 'daily' ? "Today's Focus" : statsTimeframe === 'weekly' ? "Weekly Focus" : "Monthly Focus"}</p></div>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                   <div className="lg:col-span-4 bg-white p-10 rounded-[56px] border border-slate-100 shadow-sm min-h-[400px]">
-                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8">Subject Distribution</h3>
+                    <div className="flex flex-col gap-1 mb-8">
+                      <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Subject Distribution</h3>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Selected {statsTimeframe} window</p>
+                    </div>
                     <div className="h-64">
                       {subjectDistributionData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
@@ -565,20 +585,23 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                             <Pie data={subjectDistributionData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="minutes">
                               {subjectDistributionData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                             </Pie>
-                            <Tooltip contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                            <Tooltip formatter={(value: number) => formatDuration(value)} contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
                           </PieChart>
                         </ResponsiveContainer>
                       ) : (
                         <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4">
                            <PieChartIcon className="opacity-20" size={48} />
-                           <p className="text-[10px] font-black uppercase tracking-widest">No Distribution Data</p>
+                           <p className="text-[10px] font-black uppercase tracking-widest">No Data in {statsTimeframe} window</p>
                         </div>
                       )}
                     </div>
                   </div>
 
                   <div className="lg:col-span-8 bg-white p-10 rounded-[56px] border border-slate-100 shadow-sm">
-                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8">Detailed Breakdown</h3>
+                    <div className="flex flex-col gap-1 mb-8">
+                      <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Detailed Breakdown</h3>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Showing {statsTimeframe} performance levels</p>
+                    </div>
                     <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-4">
                        {subjectDistributionData.map((item, i) => {
                          const percentage = Math.round((item.minutes / (totalFocusMinutes || 1)) * 100);
@@ -600,6 +623,11 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                            </div>
                          );
                        })}
+                       {subjectDistributionData.length === 0 && (
+                          <div className="py-20 text-center opacity-30">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em]">Zero hours logged in this timeframe</p>
+                          </div>
+                       )}
                     </div>
                   </div>
                 </div>
