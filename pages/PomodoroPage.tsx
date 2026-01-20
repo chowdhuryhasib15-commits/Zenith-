@@ -95,7 +95,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
   const [activeTab, setActiveTab] = useState<'stats' | 'audio'>('stats');
-  const [statsTimeframe, setStatsTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [statsTimeframe, setStatsTimeframe] = useState<'daily' | 'weekly' | 'monthly' | 'all-time'>('daily');
   const [selectedAmbient, setSelectedAmbient] = useState<string | null>(null);
   const [customYtUrl, setCustomYtUrl] = useState('');
   const [playingYtId, setPlayingYtId] = useState<string | null>(null);
@@ -316,10 +316,12 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
       return logs.filter(l => new Date(l.timestamp) >= weekAgo);
-    } else {
+    } else if (statsTimeframe === 'monthly') {
       const monthAgo = new Date();
       monthAgo.setMonth(monthAgo.getMonth() - 1);
       return logs.filter(l => new Date(l.timestamp) >= monthAgo);
+    } else {
+      return logs;
     }
   }, [logs, statsTimeframe]);
 
@@ -351,13 +353,27 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
         }).reduce((acc, l) => acc + l.duration, 0);
         return { name: week.label, minutes: total };
       });
-    } else {
+    } else if (statsTimeframe === 'monthly') {
       const last6Months = [...Array(6)].map((_, i) => {
         const d = new Date();
         d.setMonth(d.getMonth() - i);
         return { month: d.getMonth(), year: d.getFullYear(), label: d.toLocaleString('default', { month: 'short' }) };
       }).reverse();
       return last6Months.map(m => {
+        const total = logs.filter(l => {
+          const d = new Date(l.timestamp);
+          return d.getMonth() === m.month && d.getFullYear() === m.year;
+        }).reduce((acc, l) => acc + l.duration, 0);
+        return { name: m.label, minutes: total };
+      });
+    } else {
+      // All-time: showing last 12 months grouped by month
+      const last12Months = [...Array(12)].map((_, i) => {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        return { month: d.getMonth(), year: d.getFullYear(), label: d.toLocaleString('default', { month: 'short' }) };
+      }).reverse();
+      return last12Months.map(m => {
         const total = logs.filter(l => {
           const d = new Date(l.timestamp);
           return d.getMonth() === m.month && d.getFullYear() === m.year;
@@ -525,7 +541,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                         </div>
                       </div>
                       <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-200 shadow-inner">
-                        {(['daily', 'weekly', 'monthly'] as const).map(t => (
+                        {(['daily', 'weekly', 'monthly', 'all-time'] as const).map(t => (
                           <button 
                             key={t}
                             onClick={() => setStatsTimeframe(t)}
@@ -553,7 +569,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                             formatter={(value: any) => [formatDuration(Number(value || 0)), 'Focus Time']}
                             contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)' }} 
                           />
-                          <Area type="monotone" dataKey="minutes" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#pomoGrad)" />
+                          <Area type="monotone" dataKey="minutes" stroke="#6366f1" strokeWidth={5} fillOpacity={1} fill="url(#pomoGrad)" />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
@@ -567,7 +583,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                     <div className="bg-indigo-600 text-white p-8 rounded-[40px] flex items-center gap-6 shadow-xl relative overflow-hidden group">
                       <div className="absolute bottom-0 right-0 p-12 opacity-10 group-hover:rotate-12 transition-transform duration-700"><Trophy size={120} /></div>
                       <Trophy className="text-indigo-200 relative z-10" size={32} />
-                      <div className="relative z-10"><p className="text-4xl font-black tabular-nums leading-none tracking-tighter">{formatDuration(totalFocusMinutes)}</p><p className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.3em] mt-2">{statsTimeframe === 'daily' ? "Today's Focus" : statsTimeframe === 'weekly' ? "Weekly Focus" : "Monthly Focus"}</p></div>
+                      <div className="relative z-10"><p className="text-4xl font-black tabular-nums leading-none tracking-tighter">{formatDuration(totalFocusMinutes)}</p><p className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.3em] mt-2">{statsTimeframe === 'daily' ? "Today's Focus" : statsTimeframe === 'weekly' ? "Weekly Focus" : statsTimeframe === 'monthly' ? "Monthly Focus" : "All-Time Focus"}</p></div>
                     </div>
                   </div>
                 </div>
