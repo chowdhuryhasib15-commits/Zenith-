@@ -524,7 +524,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                         <AreaChart data={chartData}>
                           <defs><linearGradient id="pomoGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontBold: 900, fill: '#94a3b8' }} />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#94a3b8' }} />
                           <YAxis 
                             axisLine={false} 
                             tickLine={false} 
@@ -533,7 +533,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                           />
                           <Tooltip 
                             cursor={{ stroke: '#6366f1', strokeWidth: 2, strokeDasharray: '5 5' }} 
-                            formatter={(value: number) => [formatDuration(value), 'Focus Time']}
+                            formatter={(value: any) => [formatDuration(Number(value || 0)), 'Focus Time']}
                             contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)' }} 
                           />
                           <Area type="monotone" dataKey="minutes" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#pomoGrad)" />
