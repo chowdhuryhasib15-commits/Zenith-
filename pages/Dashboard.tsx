@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { AppState, Subject, Chapter, StudyTask, Goal } from '../types';
 import { ICONS } from '../constants';
 import { getStudyInsights, getDailyStudyPlan, getDynamicGreeting } from '../services/geminiService';
-import { Timer, Edit2, X, AlertCircle, Zap, Brain, ChevronRight, Sparkles, GraduationCap, UserCircle, Download, ShieldCheck, RefreshCw, ListTodo, Clock, Sprout, Flower2, Leaf, Target, TrendingUp, CheckCircle2, Circle, AlertTriangle } from 'lucide-react';
+import { Timer, Edit2, X, AlertCircle, Zap, Brain, ChevronRight, Sparkles, GraduationCap, UserCircle, Download, ShieldCheck, RefreshCw, ListTodo, Clock, Sprout, Flower2, Leaf, Target, TrendingUp, CheckCircle2, Circle, AlertTriangle, TreeDeciduous, Shrub } from 'lucide-react';
 
 interface DashboardProps {
   state: AppState;
@@ -24,7 +24,7 @@ const ZenithIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
 
 // High-Fidelity Plant Visualizer
 export const NeuralGarden = ({ streak, isWilted, scale = 1 }: { streak: number; isWilted: boolean; scale?: number }) => {
-  const levels = streak >= 12 ? 5 : streak >= 8 ? 4 : streak >= 4 ? 3 : streak >= 1 ? 2 : 1;
+  const levels = streak >= 21 ? 6 : streak >= 14 ? 5 : streak >= 7 ? 4 : streak >= 3 ? 3 : streak >= 1 ? 2 : 1;
   
   return (
     <div className="relative w-full h-56 flex flex-col justify-end items-center perspective-1000 overflow-visible">
@@ -32,7 +32,12 @@ export const NeuralGarden = ({ streak, isWilted, scale = 1 }: { streak: number; 
       <div className="absolute top-0 left-8 z-30 text-left pointer-events-none">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] whitespace-nowrap">Zenith Arboreatum</p>
         <p className={`text-xl font-black ${isWilted ? 'text-amber-700' : 'text-slate-900'} tracking-tighter whitespace-nowrap`}>
-          {isWilted ? 'Dormant' : levels === 5 ? 'Zenith Bloom' : levels === 4 ? 'Flourishing' : levels === 3 ? 'Resilient' : levels === 2 ? 'Robust Growth' : 'New Sprout'}
+          {isWilted ? 'Dormant' : 
+           levels === 6 ? 'Eternal Canopy' : 
+           levels === 5 ? 'Zenith Bloom' : 
+           levels === 4 ? 'Flourishing' : 
+           levels === 3 ? 'Resilient' : 
+           levels === 2 ? 'Robust Growth' : 'New Sprout'}
         </p>
       </div>
 
@@ -56,28 +61,50 @@ export const NeuralGarden = ({ streak, isWilted, scale = 1 }: { streak: number; 
             </div>
           ) : (
             <div className="flex flex-col items-center mb-2">
-               {levels >= 5 && (
+               {levels === 6 && (
+                 <div className="relative animate-in zoom-in slide-in-from-bottom-8 duration-[1.5s] flex flex-col items-center">
+                    <div className="absolute -inset-10 bg-indigo-500/5 blur-3xl rounded-full -z-10 animate-pulse" />
+                    <TreeDeciduous size={72} className="text-indigo-600 drop-shadow-[0_0_15px_rgba(99,102,241,0.4)]" />
+                    <div className="flex gap-1 -mt-4">
+                       <Flower2 size={16} className="text-pink-400 animate-bounce" />
+                       <Flower2 size={16} className="text-violet-400 animate-bounce delay-100" />
+                       <Flower2 size={16} className="text-indigo-400 animate-bounce delay-200" />
+                    </div>
+                 </div>
+               )}
+
+               {levels === 5 && (
                  <div className="relative animate-bounce duration-[4s] mb-[-6px] z-20">
                    <Flower2 size={40} className="text-violet-600 drop-shadow-[0_0_12px_rgba(139,92,246,0.6)]" />
                    <div className="absolute -inset-4 bg-violet-500/10 blur-2xl rounded-full -z-10 animate-pulse" />
+                   <div className="flex gap-3 absolute -bottom-4 left-1/2 -translate-x-1/2">
+                      <Leaf size={16} className="text-indigo-300 -rotate-45" />
+                      <Leaf size={16} className="text-indigo-300 rotate-45" />
+                   </div>
                  </div>
                )}
                
-               {levels >= 4 && (
-                 <div className="relative flex gap-2 mb-[-4px] z-10 animate-in zoom-in slide-in-from-bottom-4 duration-1000">
-                   <Flower2 size={24} className="text-indigo-400 opacity-60 -rotate-12" />
-                   <Flower2 size={24} className="text-indigo-400 opacity-60 rotate-12" />
+               {levels === 4 && (
+                 <div className="relative flex flex-col items-center gap-1 mb-[-4px] z-10 animate-in zoom-in slide-in-from-bottom-4 duration-1000">
+                   <div className="flex gap-2">
+                     <Flower2 size={24} className="text-indigo-400 opacity-60 -rotate-12" />
+                     <Flower2 size={24} className="text-indigo-400 opacity-60 rotate-12" />
+                   </div>
+                   <Shrub size={44} className="text-indigo-500/80" />
                  </div>
                )}
 
-               {levels >= 3 && (
-                 <div className="flex gap-2 animate-in zoom-in slide-in-from-bottom-2 duration-700">
-                    <Leaf size={24} className="text-indigo-400 rotate-45 translate-x-2" />
-                    <Leaf size={24} className="text-indigo-500 -rotate-45 -translate-x-2 translate-y-2" />
+               {levels === 3 && (
+                 <div className="flex flex-col items-center animate-in zoom-in slide-in-from-bottom-2 duration-700">
+                    <div className="flex gap-2 mb-[-8px]">
+                       <Leaf size={24} className="text-indigo-400 rotate-45 translate-x-2" />
+                       <Leaf size={24} className="text-indigo-500 -rotate-45 -translate-x-2 translate-y-2" />
+                    </div>
+                    <div className="w-2.5 h-16 bg-gradient-to-t from-slate-200 to-indigo-400 rounded-full shadow-inner" />
                  </div>
                )}
 
-               {levels >= 2 && (
+               {levels === 2 && (
                  <div className="w-2 h-20 bg-gradient-to-t from-slate-200 to-indigo-500 rounded-full shadow-inner relative">
                     <div className="absolute top-4 -left-5 rotate-[-45deg] scale-90 opacity-80"><Leaf size={18} className="text-indigo-300" /></div>
                     <div className="absolute top-10 -right-5 rotate-[45deg] scale-90 opacity-80"><Leaf size={18} className="text-indigo-300" /></div>

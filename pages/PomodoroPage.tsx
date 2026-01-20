@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Subject, PomodoroLog, AppState } from '../types';
 import { 
   XAxis, YAxis, Tooltip, ResponsiveContainer, 
@@ -11,7 +11,7 @@ import {
   Download, RefreshCw, Lock, ChevronDown, Volume2, VolumeX,
   TrendingUp, Activity, CloudRain, Music, Wind, Youtube, Disc, ListMusic, ShieldCheck, 
   Radio, SignalHigh, SignalMedium, SignalLow, Waves, BarChart3,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon, Command
 } from 'lucide-react';
 import { ICONS } from '../constants';
 
@@ -205,7 +205,91 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
       }, 200); // Check 5 times a second for snappy UI
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [isActive, mode, selectedSub, focusDuration]);
+  }, [isActive, mode, selectedSub, focusDuration, onComplete]);
+
+  const startTimer = useCallback(() => {
+    if (!selectedSub) {
+      setHasTriedToStart(true);
+      setTimeout(() => setHasTriedToStart(false), 2000);
+      return;
+    }
+    setIsActive(true);
+  }, [selectedSub]);
+
+  const resetTimer = useCallback((newMode?: 'focus' | 'break') => {
+    setIsActive(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+    setMinutes((newMode || mode) === 'focus' ? focusDuration : breakDuration);
+    setSeconds(0);
+  }, [mode, focusDuration, breakDuration]);
+
+  const handleModeChange = useCallback((newMode: 'focus' | 'break') => {
+    setMode(newMode);
+    resetTimer(newMode);
+  }, [resetTimer]);
+
+  const handleFinishEarly = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setIsActive(false);
+    if (mode === 'focus') {
+      onComplete({ 
+        id: Date.now().toString(), 
+        subjectId: selectedSub, 
+        duration: focusDuration, 
+        timestamp: new Date().toISOString() 
+      });
+      setMode('break');
+    } else {
+      setMode('focus');
+    }
+  }, [mode, selectedSub, focusDuration, onComplete]);
+
+  // Keyboard Shortcuts Implementation with focus conflict resolution
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+        if (e.key === 'Escape') (document.activeElement as HTMLElement).blur();
+        return;
+      }
+
+      switch (e.key.toLowerCase()) {
+        case ' ': // Space
+          e.preventDefault();
+          // If a button is focused, space would click it. Blur it to prevent double-toggle.
+          if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+          
+          if (isActive) {
+            setIsActive(false);
+          } else {
+            startTimer();
+          }
+          break;
+        case 'r': // Reset
+          if (!isActive || window.confirm("Abort mission?")) resetTimer();
+          break;
+        case 'f': // Finish early
+          if (isActive) handleFinishEarly();
+          break;
+        case 's': // Settings
+          setShowSettings(prev => !prev);
+          break;
+        case 'b': // Switch to Break
+          if (!isActive) handleModeChange('break');
+          break;
+        case 'w': // Switch to Focus (Work)
+          if (!isActive) handleModeChange('focus');
+          break;
+        case 'escape':
+          setShowSettings(false);
+          setIsDropdownOpen(false);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isActive, selectedSub, mode, focusDuration, breakDuration, startTimer, resetTimer, handleFinishEarly, handleModeChange]);
 
   const streakCount = useMemo(() => {
     if (logs.length === 0) return 0;
@@ -243,7 +327,7 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
     logs.forEach(log => {
       const sub = subjects.find(s => s.id === log.subjectId);
       const rawName = sub?.name || 'Deleted';
-      // Aggregation logic: strip "1st Paper" or "2nd Paper" to group by subject name only
+      // Aggregation logic: strip "1st Paper" or "2nd Paper" to show only the subject
       const name = rawName.replace(/\s*(1st|2nd)?\s*Paper/gi, '').trim();
       const color = sub?.color || '#cbd5e1';
       if (!map[name]) map[name] = { minutes: 0, color };
@@ -253,43 +337,6 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
       .map(([name, data]) => ({ name, minutes: data.minutes, color: data.color }))
       .sort((a, b) => b.minutes - a.minutes);
   }, [logs, subjects]);
-
-  const startTimer = () => {
-    if (!selectedSub) {
-      setHasTriedToStart(true);
-      setTimeout(() => setHasTriedToStart(false), 2000);
-      return;
-    }
-    setIsActive(true);
-  };
-
-  const resetTimer = (newMode?: 'focus' | 'break') => {
-    setIsActive(false);
-    if (timerRef.current) clearInterval(timerRef.current);
-    setMinutes((newMode || mode) === 'focus' ? focusDuration : breakDuration);
-    setSeconds(0);
-  };
-
-  const handleModeChange = (newMode: 'focus' | 'break') => {
-    setMode(newMode);
-    resetTimer(newMode);
-  };
-
-  const handleFinishEarly = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    setIsActive(false);
-    if (mode === 'focus') {
-      onComplete({ 
-        id: Date.now().toString(), 
-        subjectId: selectedSub, 
-        duration: focusDuration, 
-        timestamp: new Date().toISOString() 
-      });
-      setMode('break');
-    } else {
-      setMode('focus');
-    }
-  };
 
   const handleCustomYtSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -375,17 +422,35 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
           </div>
         </div>
 
-        <div className="flex items-center gap-8 mt-16 bg-white/80 backdrop-blur-xl p-4 rounded-[40px] border border-slate-100 shadow-2xl transition-all">
-          {!isActive ? (
-            <button onClick={startTimer} className={`w-20 h-20 rounded-[28px] flex items-center justify-center shadow-2xl transition-all group active:scale-90 ${!selectedSub ? 'bg-slate-100 text-slate-300 border border-slate-200' : 'bg-slate-900 text-white hover:bg-indigo-600'}`}>
-              {!selectedSub ? <Lock size={28} /> : <Play size={32} fill="currentColor" className="ml-1 group-hover:scale-110 transition-transform" />}
-            </button>
-          ) : (
-            <><button onClick={() => setIsActive(false)} className="w-20 h-20 rounded-[28px] bg-slate-900 text-white flex items-center justify-center shadow-xl hover:bg-indigo-600 active:scale-90 transition-all group"><Pause size={32} fill="currentColor" /></button>
-            <button onClick={() => { if(window.confirm("Abort mission?")) resetTimer(); }} className="w-20 h-20 rounded-[28px] bg-white text-rose-500 border-2 border-rose-50 flex items-center justify-center shadow-sm hover:bg-rose-50 active:scale-90 transition-all"><X size={32} /></button></>
+        <div className="flex flex-col items-center gap-8 mt-16">
+          <div className="flex items-center gap-8 bg-white/80 backdrop-blur-xl p-4 rounded-[40px] border border-slate-100 shadow-2xl transition-all">
+            {!isActive ? (
+              <button onClick={startTimer} className="w-20 h-20 rounded-[28px] flex items-center justify-center shadow-2xl transition-all group active:scale-90 bg-slate-900 text-white hover:bg-indigo-600">
+                {!selectedSub ? <Lock size={28} /> : <Play size={32} fill="currentColor" className="ml-1 group-hover:scale-110 transition-transform" />}
+              </button>
+            ) : (
+              <><button onClick={() => setIsActive(false)} className="w-20 h-20 rounded-[28px] bg-slate-900 text-white flex items-center justify-center shadow-xl hover:bg-indigo-600 active:scale-90 transition-all group"><Pause size={32} fill="currentColor" /></button>
+              <button onClick={() => { if(window.confirm("Abort mission?")) resetTimer(); }} className="w-20 h-20 rounded-[28px] bg-white text-rose-500 border-2 border-rose-50 flex items-center justify-center shadow-sm hover:bg-rose-50 active:scale-90 transition-all"><X size={32} /></button></>
+            )}
+            {isActive && <button onClick={() => handleFinishEarly()} className="p-5 text-emerald-600 hover:bg-emerald-50 rounded-[24px] transition-all group"><CheckCircle2 size={28} /></button>}
+            {!isActive && <button onClick={() => setShowSettings(true)} className="p-6 text-slate-400 hover:text-indigo-600 transition-all hover:bg-indigo-50 rounded-[24px] group"><Settings2 size={28} /></button>}
+          </div>
+
+          {!isActive && (
+            <div className="flex items-center gap-6 px-8 py-3 bg-slate-100/50 rounded-full border border-slate-100 opacity-60 animate-in fade-in slide-in-from-bottom-2 duration-1000">
+               <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                 <kbd className="px-2 py-1 bg-white rounded-md border border-slate-200 shadow-sm text-slate-900">Space</kbd> Start
+               </div>
+               <div className="w-1 h-1 rounded-full bg-slate-300" />
+               <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                 <kbd className="px-2 py-1 bg-white rounded-md border border-slate-200 shadow-sm text-slate-900">R</kbd> Reset
+               </div>
+               <div className="w-1 h-1 rounded-full bg-slate-300" />
+               <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                 <kbd className="px-2 py-1 bg-white rounded-md border border-slate-200 shadow-sm text-slate-900">S</kbd> Settings
+               </div>
+            </div>
           )}
-          {isActive && <button onClick={() => handleFinishEarly()} className="p-5 text-emerald-600 hover:bg-emerald-50 rounded-[24px] transition-all group"><CheckCircle2 size={28} /></button>}
-          {!isActive && <button onClick={() => setShowSettings(true)} className="p-6 text-slate-400 hover:text-indigo-600 transition-all hover:bg-indigo-50 rounded-[24px] group"><Settings2 size={28} /></button>}
         </div>
       </section>
 
@@ -561,12 +626,33 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
                   </div>
                   <button onClick={() => { setShowSettings(false); resetTimer(); }} className="w-full bg-slate-900 text-white py-7 rounded-[32px] font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-600 transition-all active:scale-95 flex items-center justify-center gap-3"><RefreshCw size={16} /> Apply Settings</button>
                 </div>
-                <div className="bg-slate-50/80 border border-slate-100 rounded-[48px] p-10 space-y-8">
-                  <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-3">Vault Control</h4>
-                  <div className="grid grid-cols-1 gap-5">
-                    <button onClick={() => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullState)); const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", `zenith_vault_${new Date().toISOString().split('T')[0]}.json`); dl.click(); }} className="flex items-center justify-between p-7 bg-white border-2 border-transparent hover:border-indigo-100 rounded-[32px] transition-all group shadow-sm">
-                      <div className="flex items-center gap-5"><div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl"><Download size={24} /></div><div className="text-left"><p className="text-sm font-black text-slate-900">Secure Backup</p><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Export Vault</p></div></div>
-                    </button>
+                <div className="bg-slate-50/80 border border-slate-100 rounded-[48px] p-10 space-y-8 overflow-hidden relative">
+                  <div className="absolute top-0 right-0 p-8 opacity-5 -rotate-12"><Command size={140} /></div>
+                  <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-3 relative z-10"><Command size={16} /> Control Matrix</h4>
+                  <div className="grid grid-cols-1 gap-4 relative z-10">
+                    <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-black uppercase text-slate-400">Play / Pause</span>
+                      <kbd className="px-2 py-1 bg-slate-100 rounded border border-slate-200 text-[10px] font-bold">Space</kbd>
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-black uppercase text-slate-400">Reset Mission</span>
+                      <kbd className="px-2 py-1 bg-slate-100 rounded border border-slate-200 text-[10px] font-bold">R</kbd>
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-black uppercase text-slate-400">Finish Early</span>
+                      <kbd className="px-2 py-1 bg-slate-100 rounded border border-slate-200 text-[10px] font-bold">F</kbd>
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-black uppercase text-slate-400">Toggle Settings</span>
+                      <kbd className="px-2 py-1 bg-slate-100 rounded border border-slate-200 text-[10px] font-bold">S</kbd>
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-black uppercase text-slate-400">Switch Phase</span>
+                      <div className="flex gap-1">
+                        <kbd className="px-2 py-1 bg-slate-100 rounded border border-slate-200 text-[10px] font-bold">W</kbd>
+                        <kbd className="px-2 py-1 bg-slate-100 rounded border border-slate-200 text-[10px] font-bold">B</kbd>
+                      </div>
+                    </div>
                   </div>
                 </div>
              </div>

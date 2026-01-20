@@ -53,6 +53,19 @@ const GardenPage: React.FC<GardenPageProps> = ({ state, onUpdate }) => {
     });
   };
 
+  const nextEvolutionDays = useMemo(() => {
+    if (state.gardenStreak < 1) return 1;
+    if (state.gardenStreak < 3) return 3;
+    if (state.gardenStreak < 7) return 7;
+    if (state.gardenStreak < 14) return 14;
+    if (state.gardenStreak < 21) return 21;
+    return 30; // Max plateau
+  }, [state.gardenStreak]);
+
+  const maturityProgress = useMemo(() => {
+    return Math.min(100, Math.round((state.gardenStreak / 21) * 100));
+  }, [state.gardenStreak]);
+
   return (
     <div className="space-y-10 animate-in fade-in duration-500 pb-24 max-w-7xl mx-auto px-4">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -129,14 +142,14 @@ const GardenPage: React.FC<GardenPageProps> = ({ state, onUpdate }) => {
                        <div className="p-3 bg-white/10 rounded-2xl text-emerald-400 group-hover/item:scale-110 transition-transform"><Trophy size={20} /></div>
                        <div>
                           <p className="text-sm font-black text-white">Mastery Cycles</p>
-                          <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase tracking-widest leading-relaxed">Plants evolve through 5 distinct stages as your streak matures.</p>
+                          <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase tracking-widest leading-relaxed">Plants evolve through 6 distinct stages from sprouts to majestic trees.</p>
                        </div>
                     </div>
                     <div className="flex items-start gap-5 group/item">
                        <div className="p-3 bg-white/10 rounded-2xl text-rose-400 group-hover/item:scale-110 transition-transform"><AlertCircle size={20} /></div>
                        <div>
                           <p className="text-sm font-black text-white">Dormancy Risk</p>
-                          <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase tracking-widest leading-relaxed">Missing your target for 24 hours forces the flora into a dormant state.</p>
+                          <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase tracking-widest leading-relaxed">Missing your target resets progress signals and induces a dormant state.</p>
                        </div>
                     </div>
                  </div>
@@ -148,12 +161,12 @@ const GardenPage: React.FC<GardenPageProps> = ({ state, onUpdate }) => {
               <div className="space-y-6">
                  <div className="flex items-center justify-between">
                     <span className="text-sm font-bold text-slate-600">Maturity Progress</span>
-                    <span className="text-sm font-black text-indigo-600">{Math.min(100, Math.round((state.gardenStreak / 12) * 100))}%</span>
+                    <span className="text-sm font-black text-indigo-600">{maturityProgress}%</span>
                  </div>
                  <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden shadow-inner">
-                    <div className="h-full bg-indigo-600 transition-all duration-1000" style={{ width: `${Math.min(100, (state.gardenStreak / 12) * 100)}%` }} />
+                    <div className="h-full bg-indigo-600 transition-all duration-1000" style={{ width: `${maturityProgress}%` }} />
                  </div>
-                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center mt-4">Next Evolution: {Math.ceil((state.gardenStreak + 1) / 4) * 4} Successful Days</p>
+                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center mt-4">Next Evolution Target: {nextEvolutionDays} Days</p>
               </div>
            </div>
         </div>
