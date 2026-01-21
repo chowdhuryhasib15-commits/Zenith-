@@ -34,7 +34,11 @@ const formatDuration = (mins: number) => {
     const hours = mins / 60;
     return hours % 1 === 0 ? `${hours}h` : `${hours.toFixed(1)}h`;
   }
-  return `${mins}m`;
+  // For very small fractional minutes, ensure we show something meaningful
+  if (mins > 0 && mins < 1) {
+    return `${Math.round(mins * 60)}s`;
+  }
+  return `${Math.round(mins)}m`;
 };
 
 const Visualizer = ({ isActive, volume, isMuted, color = "bg-indigo-400" }: { isActive: boolean; volume: number; isMuted: boolean; color?: string }) => {
@@ -236,18 +240,27 @@ const PomodoroPage: React.FC<PomodoroPageProps> = ({ subjects, onComplete, logs,
   const handleFinishEarly = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     setIsActive(false);
+    
     if (mode === 'focus') {
-      onComplete({ 
-        id: Date.now().toString(), 
-        subjectId: selectedSub, 
-        duration: focusDuration, 
-        timestamp: new Date().toISOString() 
-      });
+      // Calculate actual elapsed minutes spent focusing
+      const remainingSeconds = minutes * 60 + seconds;
+      const initialSeconds = focusDuration * 60;
+      const elapsedMinutes = Number(((initialSeconds - remainingSeconds) / 60).toFixed(2));
+
+      // Only log if some meaningful time has passed (at least 5 seconds)
+      if (elapsedMinutes > 0.08) {
+        onComplete({ 
+          id: Date.now().toString(), 
+          subjectId: selectedSub, 
+          duration: elapsedMinutes, 
+          timestamp: new Date().toISOString() 
+        });
+      }
       setMode('break');
     } else {
       setMode('focus');
     }
-  }, [mode, selectedSub, focusDuration, onComplete]);
+  }, [mode, selectedSub, focusDuration, onComplete, minutes, seconds]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
